@@ -1,4 +1,4 @@
-const CACHE_NAME = 'todo-app-v1';
+const CACHE_NAME = 'todo-app-v2';
 const urlsToCache = [
     '/',
     '/index.html',
@@ -13,17 +13,27 @@ self.addEventListener('install', (event) => {
         caches.open(CACHE_NAME)
             .then((cache) => cache.addAll(urlsToCache))
     );
+    // Activate immediately without waiting
+    self.skipWaiting();
 });
 
-// Serve cached files when offline
+// Network first, fall back to cache (ensures fresh content)
 self.addEventListener('fetch', (event) => {
     event.respondWith(
-        caches.match(event.request)
-            .then((response) => response || fetch(event.request))
+        fetch(event.request)
+            .then((response) => {
+                // Clone and cache the fresh response
+                const responseClone = response.clone();
+                caches.open(CACHE_NAME).then((cache) => {
+                    cache.put(event.request, responseClone);
+                });
+                return response;
+            })
+            .catch(() => caches.match(event.request))
     );
 });
 
-// Clean up old caches
+// Clean up old caches and take control immediately
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((cacheNames) => {
@@ -32,6 +42,6 @@ self.addEventListener('activate', (event) => {
                     .filter((name) => name !== CACHE_NAME)
                     .map((name) => caches.delete(name))
             );
-        })
+        }).then(() => self.clients.claim())
     );
 });
