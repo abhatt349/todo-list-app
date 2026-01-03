@@ -14,6 +14,93 @@ function isOverdue(todo) {
     return new Date(todo.dueTime) <= new Date();
 }
 
+// Parse natural language date input
+function parseNaturalDate(input) {
+    if (!input || !input.trim()) return null;
+
+    const text = input.toLowerCase().trim();
+    const now = new Date();
+    let result = new Date(now);
+
+    // Default time to 9am if no time specified
+    let timeSpecified = false;
+    let hours = 9, minutes = 0;
+
+    // Extract time if present (e.g., "3pm", "3:30pm", "15:00")
+    const timeMatch = text.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+    if (timeMatch) {
+        timeSpecified = true;
+        hours = parseInt(timeMatch[1]);
+        minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+        const meridiem = timeMatch[3];
+        if (meridiem) {
+            if (meridiem.toLowerCase() === 'pm' && hours !== 12) hours += 12;
+            if (meridiem.toLowerCase() === 'am' && hours === 12) hours = 0;
+        }
+    }
+
+    // Parse relative dates
+    if (text.includes('today')) {
+        // result is already today
+    } else if (text.includes('tomorrow')) {
+        result.setDate(result.getDate() + 1);
+    } else if (text.includes('yesterday')) {
+        result.setDate(result.getDate() - 1);
+    } else if (text.match(/next\s+week/)) {
+        result.setDate(result.getDate() + 7);
+    } else if (text.match(/next\s+month/)) {
+        result.setMonth(result.getMonth() + 1);
+    } else if (text.match(/beginning\s+of\s+next\s+month/)) {
+        result.setMonth(result.getMonth() + 1);
+        result.setDate(1);
+    } else if (text.match(/end\s+of\s+(this\s+)?month/)) {
+        result.setMonth(result.getMonth() + 1);
+        result.setDate(0);
+    } else if (text.match(/next\s+(sun|mon|tue|wed|thu|fri|sat)/i)) {
+        const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+        const dayMatch = text.match(/next\s+(sun|mon|tue|wed|thu|fri|sat)/i);
+        const targetDay = days.findIndex(d => dayMatch[1].toLowerCase().startsWith(d));
+        const currentDay = result.getDay();
+        let daysUntil = targetDay - currentDay;
+        if (daysUntil <= 0) daysUntil += 7;
+        result.setDate(result.getDate() + daysUntil);
+    } else {
+        // Try to parse month/day formats like "Jan 5", "January 5", "1/5"
+        const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+        const monthMatch = text.match(/([a-z]+)\s+(\d{1,2})/i);
+        const slashMatch = text.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+
+        if (monthMatch) {
+            const monthIdx = monthNames.findIndex(m => monthMatch[1].toLowerCase().startsWith(m));
+            if (monthIdx !== -1) {
+                result.setMonth(monthIdx);
+                result.setDate(parseInt(monthMatch[2]));
+                if (result < now) result.setFullYear(result.getFullYear() + 1);
+            }
+        } else if (slashMatch) {
+            result.setMonth(parseInt(slashMatch[1]) - 1);
+            result.setDate(parseInt(slashMatch[2]));
+            if (slashMatch[3]) {
+                let year = parseInt(slashMatch[3]);
+                if (year < 100) year += 2000;
+                result.setFullYear(year);
+            } else if (result < now) {
+                result.setFullYear(result.getFullYear() + 1);
+            }
+        } else if (!timeSpecified) {
+            // Couldn't parse, try native Date parser as fallback
+            const parsed = new Date(input);
+            if (!isNaN(parsed.getTime())) {
+                return parsed.toISOString();
+            }
+            return null;
+        }
+    }
+
+    result.setHours(hours, minutes, 0, 0);
+    return result.toISOString();
+}
+
 // Initialize Firebase and load todos
 function initApp() {
     db = firebase.firestore();
@@ -156,7 +243,7 @@ async function addTodo() {
     if (isNaN(priority) || priority < 0) priority = 0;
     if (priority > 10) priority = 10;
 
-    const dueTime = dueTimeInput.value || null;
+    const dueTime = parseNaturalDate(dueTimeInput.value);
 
     await todosRef.add({
         text: text,
@@ -192,26 +279,26 @@ async function updateDueTime(id, newDueTime) {
     await todosRef.doc(id).update({ dueTime: newDueTime || null });
 }
 
-// Show datetime picker for a todo item
+// Show date input for a todo item (natural language)
 function showDueTimePicker(item) {
     const id = item.dataset.id;
-    const currentDueTime = item.dataset.duetime;
     const btn = item.querySelector('.due-time-btn');
 
-    // Create inline datetime input
+    // Create inline text input for natural language
     const input = document.createElement('input');
-    input.type = 'datetime-local';
+    input.type = 'text';
     input.className = 'due-time-input-inline';
-    input.value = currentDueTime || '';
+    input.placeholder = 'tomorrow 3pm';
 
     // Replace button with input
     btn.style.display = 'none';
     btn.insertAdjacentElement('afterend', input);
     input.focus();
 
-    // Handle blur and change
+    // Handle save
     const save = async () => {
-        await updateDueTime(id, input.value);
+        const parsed = parseNaturalDate(input.value);
+        await updateDueTime(id, parsed);
         input.remove();
         btn.style.display = '';
     };
@@ -225,6 +312,50 @@ function showDueTimePicker(item) {
         if (e.key === 'Escape') {
             input.remove();
             btn.style.display = '';
+        }
+    });
+}
+
+// Show priority editor for a todo item
+function showPriorityEditor(item) {
+    const id = item.dataset.id;
+    const badge = item.querySelector('.priority-badge');
+    const currentPriority = badge.textContent;
+
+    // Create inline number input
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'priority-input-inline';
+    input.min = '0';
+    input.max = '10';
+    input.step = '0.1';
+    input.value = currentPriority;
+
+    // Replace badge with input
+    badge.style.display = 'none';
+    badge.insertAdjacentElement('afterend', input);
+    input.focus();
+    input.select();
+
+    // Handle save
+    const save = async () => {
+        let newPriority = parseFloat(input.value);
+        if (isNaN(newPriority) || newPriority < 0) newPriority = 0;
+        if (newPriority > 10) newPriority = 10;
+        await updatePriority(id, newPriority);
+        input.remove();
+        badge.style.display = '';
+    };
+
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            input.blur();
+        }
+        if (e.key === 'Escape') {
+            input.remove();
+            badge.style.display = '';
         }
     });
 }
@@ -348,6 +479,10 @@ todoList.addEventListener('click', (e) => {
 
     if (e.target.classList.contains('due-time-btn')) {
         showDueTimePicker(item);
+    }
+
+    if (e.target.classList.contains('priority-badge')) {
+        showPriorityEditor(item);
     }
 });
 
