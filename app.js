@@ -14,15 +14,6 @@ function isOverdue(todo) {
     return new Date(todo.dueTime) <= new Date();
 }
 
-// Convert old string priorities to numeric
-function migratePriority(priority) {
-    if (typeof priority === 'number') return priority;
-    if (priority === 'high') return 8;
-    if (priority === 'medium') return 5;
-    if (priority === 'low') return 2;
-    return 5;
-}
-
 // Initialize Firebase and load todos
 function initApp() {
     db = firebase.firestore();
@@ -30,13 +21,11 @@ function initApp() {
 
     // Listen for real-time updates
     todosRef.onSnapshot((snapshot) => {
-        // Migrate old string priorities to numeric (fire and forget)
+        // Boost overdue items to max priority
         snapshot.docs.forEach(doc => {
             const data = doc.data();
-            if (typeof data.priority === 'string') {
-                todosRef.doc(doc.id).update({
-                    priority: migratePriority(data.priority)
-                });
+            if (isOverdue(data) && data.priority < 10) {
+                todosRef.doc(doc.id).update({ priority: 10 });
             }
         });
 
@@ -58,9 +47,7 @@ function initApp() {
             }
 
             // Within same status, sort by priority descending
-            const pA = migratePriority(aData.priority);
-            const pB = migratePriority(bData.priority);
-            return pB - pA;
+            return (bData.priority || 0) - (aData.priority || 0);
         });
         renderTodos(currentDocs);
     });
