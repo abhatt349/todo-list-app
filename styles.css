@@ -390,6 +390,7 @@ h1 {
     text-align: center;
 }
 
+.todo-item.urgent,
 .todo-item.overdue {
     border-left: 4px solid #b71c1c;
     animation: urgentPulse 0.8s infinite;

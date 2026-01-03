@@ -270,8 +270,10 @@ function renderTodoItem(doc) {
     const overdue = isOverdue(todo);
     const dueTimeDisplay = todo.dueTime ? formatDueTime(todo.dueTime) : '';
     const hasNotes = todo.notes && todo.notes.trim().length > 0;
+    const isUrgent = (todo.priority || 0) >= 10;
     const classes = ['todo-item'];
     if (todo.completed) classes.push('completed');
+    if (isUrgent && !todo.completed) classes.push('urgent');
     if (overdue) classes.push('overdue');
 
     return `
