@@ -258,8 +258,8 @@ function formatDueTime(dueTime) {
 function getPrioritySection(priority) {
     const p = priority || 0;
     if (p >= 10) return 'urgent';
-    if (p >= 6) return 'high';
-    if (p >= 3) return 'medium';
+    if (p >= 7) return 'high';
+    if (p >= 4) return 'medium';
     return 'low';
 }
 
@@ -318,13 +318,13 @@ function renderTodos(docs) {
     html += `<li class="section-header section-urgent" data-section="urgent" data-priority="10">Urgent (10)</li>`;
     html += sections.urgent.map(renderTodoItem).join('');
 
-    html += `<li class="section-header section-high" data-section="high" data-priority="7">High (6-9)</li>`;
+    html += `<li class="section-header section-high" data-section="high" data-priority="8">High (7-9)</li>`;
     html += sections.high.map(renderTodoItem).join('');
 
-    html += `<li class="section-header section-medium" data-section="medium" data-priority="4">Medium (3-5)</li>`;
+    html += `<li class="section-header section-medium" data-section="medium" data-priority="5">Medium (4-6)</li>`;
     html += sections.medium.map(renderTodoItem).join('');
 
-    html += `<li class="section-header section-low" data-section="low" data-priority="1">Low (0-2)</li>`;
+    html += `<li class="section-header section-low" data-section="low" data-priority="2">Low (1-3)</li>`;
     html += sections.low.map(renderTodoItem).join('');
 
     // Render completed section only if there are completed items
@@ -635,9 +635,9 @@ async function handleSectionDrop(e) {
 function getSectionBounds(priority) {
     const p = priority || 0;
     if (p >= 10) return { min: 10, max: 10 };
-    if (p >= 6) return { min: 6, max: 9.9 };
-    if (p >= 3) return { min: 3, max: 5.9 };
-    return { min: 0, max: 2.9 };
+    if (p >= 7) return { min: 7, max: 9.9 };
+    if (p >= 4) return { min: 4, max: 6.9 };
+    return { min: 0, max: 3.9 };
 }
 
 async function handleDrop(e) {
