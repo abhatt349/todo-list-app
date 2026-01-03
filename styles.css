@@ -106,14 +106,27 @@ h1 {
     transform: scale(0.98);
 }
 
-.todo-item.drag-over {
+.todo-item.drag-over-top,
+.todo-item.drag-over-bottom {
     position: relative;
 }
 
-.todo-item.drag-over::before {
+.todo-item.drag-over-top::before {
     content: '';
     position: absolute;
     top: -4px;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: #4a90d9;
+    border-radius: 2px;
+    box-shadow: 0 0 8px rgba(74, 144, 217, 0.6);
+}
+
+.todo-item.drag-over-bottom::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
     left: 0;
     right: 0;
     height: 4px;

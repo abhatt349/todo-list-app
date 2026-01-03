@@ -499,7 +499,7 @@ function handleDragStart(e) {
 function handleDragEnd(e) {
     this.classList.remove('dragging');
     document.querySelectorAll('.todo-item').forEach(item => {
-        item.classList.remove('drag-over');
+        item.classList.remove('drag-over-top', 'drag-over-bottom');
     });
     draggedItem = null;
 }
@@ -509,12 +509,25 @@ function handleDragOver(e) {
     e.dataTransfer.dropEffect = 'move';
 
     if (this !== draggedItem) {
-        this.classList.add('drag-over');
+        // Determine if cursor is in top or bottom half
+        const rect = this.getBoundingClientRect();
+        const midpoint = rect.top + rect.height / 2;
+        const isTopHalf = e.clientY < midpoint;
+
+        // Remove both classes first
+        this.classList.remove('drag-over-top', 'drag-over-bottom');
+
+        // Add appropriate class
+        if (isTopHalf) {
+            this.classList.add('drag-over-top');
+        } else {
+            this.classList.add('drag-over-bottom');
+        }
     }
 }
 
 function handleDragLeave(e) {
-    this.classList.remove('drag-over');
+    this.classList.remove('drag-over-top', 'drag-over-bottom');
 }
 
 // Get section bounds for a priority
@@ -528,7 +541,13 @@ function getSectionBounds(priority) {
 
 async function handleDrop(e) {
     e.preventDefault();
-    this.classList.remove('drag-over');
+
+    // Determine if dropping above or below target
+    const rect = this.getBoundingClientRect();
+    const midpoint = rect.top + rect.height / 2;
+    const dropAbove = e.clientY < midpoint;
+
+    this.classList.remove('drag-over-top', 'drag-over-bottom');
 
     if (!draggedItem || this === draggedItem) return;
 
@@ -544,7 +563,6 @@ async function handleDrop(e) {
     const draggedData = draggedDoc.data();
     const targetData = targetDoc.data();
     const targetPriority = targetData.priority;
-    const draggedIndex = currentDocs.findIndex(d => d.id === draggedId);
     const targetIndex = currentDocs.findIndex(d => d.id === targetId);
 
     // Get the target's section bounds
@@ -553,21 +571,19 @@ async function handleDrop(e) {
     let newPriority;
     let clearDueTime = false;
 
-    // If dragging an overdue item downward, clear its due time
-    if (isOverdue(draggedData) && draggedIndex < targetIndex) {
+    // If dragging an overdue item to a lower position, clear its due time
+    if (isOverdue(draggedData) && !dropAbove) {
         clearDueTime = true;
     }
 
-    if (draggedIndex > targetIndex) {
-        // Moving up (to higher priority)
-        // Set priority slightly higher than target, but within section bounds
+    if (dropAbove) {
+        // Dropping above target - set priority slightly higher than target
         const aboveDoc = targetIndex > 0 ? currentDocs[targetIndex - 1] : null;
         const abovePriority = aboveDoc ? aboveDoc.data().priority : sectionBounds.max + 0.1;
         newPriority = Math.round((targetPriority + abovePriority) / 2 * 10) / 10;
         if (newPriority <= targetPriority) newPriority = targetPriority + 0.1;
     } else {
-        // Moving down (to lower priority)
-        // Set priority slightly lower than target, but within section bounds
+        // Dropping below target - set priority slightly lower than target
         const belowDoc = targetIndex < currentDocs.length - 1 ? currentDocs[targetIndex + 1] : null;
         const belowPriority = belowDoc ? belowDoc.data().priority : sectionBounds.min - 0.1;
         newPriority = Math.round((targetPriority + belowPriority) / 2 * 10) / 10;
