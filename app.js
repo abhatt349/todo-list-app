@@ -7,14 +7,38 @@ let db;
 let todosRef;
 let currentDocs = [];
 
+// Convert old string priorities to numeric
+function migratePriority(priority) {
+    if (typeof priority === 'number') return priority;
+    if (priority === 'high') return 8;
+    if (priority === 'medium') return 5;
+    if (priority === 'low') return 2;
+    return 5;
+}
+
 // Initialize Firebase and load todos
 function initApp() {
     db = firebase.firestore();
     todosRef = db.collection('todos');
 
-    // Listen for real-time updates, sorted by priority (descending)
-    todosRef.orderBy('priority', 'desc').onSnapshot((snapshot) => {
-        currentDocs = snapshot.docs;
+    // Listen for real-time updates
+    todosRef.onSnapshot((snapshot) => {
+        // Migrate old string priorities to numeric (fire and forget)
+        snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            if (typeof data.priority === 'string') {
+                todosRef.doc(doc.id).update({
+                    priority: migratePriority(data.priority)
+                });
+            }
+        });
+
+        // Sort by priority descending
+        currentDocs = snapshot.docs.slice().sort((a, b) => {
+            const pA = migratePriority(a.data().priority);
+            const pB = migratePriority(b.data().priority);
+            return pB - pA;
+        });
         renderTodos(currentDocs);
     });
 }
@@ -59,7 +83,7 @@ function renderTodos(docs) {
                 <span class="drag-handle">&#8942;&#8942;</span>
                 <input type="checkbox" class="todo-checkbox" ${todo.completed ? 'checked' : ''}>
                 <span class="todo-text">${escapeHtml(todo.text)}</span>
-                <span class="priority-badge" style="background-color: ${colors.bg}; color: ${colors.text}">${todo.priority}</span>
+                <span class="priority-badge" style="background-color: ${colors.bg}; color: ${colors.text}">${formatPriority(todo.priority)}</span>
                 <button class="delete-btn">&times;</button>
             </li>
         `;
@@ -75,12 +99,19 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// Format priority for display (remove trailing zeros)
+function formatPriority(priority) {
+    const num = Number(priority);
+    if (Number.isInteger(num)) return num.toString();
+    return num.toFixed(1).replace(/\.0$/, '');
+}
+
 // Add a new todo
 async function addTodo() {
     const text = todoInput.value.trim();
     if (!text) return;
 
-    let priority = parseInt(prioritySelect.value, 10);
+    let priority = parseFloat(prioritySelect.value);
     if (isNaN(priority) || priority < 0) priority = 0;
     if (priority > 10) priority = 10;
 
