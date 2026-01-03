@@ -5,16 +5,40 @@ const todoList = document.getElementById('todo-list');
 
 let db;
 let todosRef;
+let currentDocs = [];
 
 // Initialize Firebase and load todos
 function initApp() {
     db = firebase.firestore();
     todosRef = db.collection('todos');
 
-    // Listen for real-time updates
-    todosRef.orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
-        renderTodos(snapshot.docs);
+    // Listen for real-time updates, sorted by priority (descending)
+    todosRef.orderBy('priority', 'desc').onSnapshot((snapshot) => {
+        currentDocs = snapshot.docs;
+        renderTodos(currentDocs);
     });
+}
+
+// Get color based on position in list (red at top, green at bottom)
+function getPositionColor(index, total) {
+    if (total <= 1) return { bg: '#ffe0e0', text: '#d32f2f' };
+
+    const ratio = index / (total - 1);
+
+    // Red (255, 200, 200) to Green (200, 255, 200)
+    const r = Math.round(255 - (55 * ratio));
+    const g = Math.round(200 + (55 * ratio));
+    const b = 200;
+
+    // Darker text color
+    const textR = Math.round(180 - (100 * ratio));
+    const textG = Math.round(50 + (100 * ratio));
+    const textB = Math.round(50);
+
+    return {
+        bg: `rgb(${r}, ${g}, ${b})`,
+        text: `rgb(${textR}, ${textG}, ${textB})`
+    };
 }
 
 // Render todos to the DOM
@@ -24,17 +48,24 @@ function renderTodos(docs) {
         return;
     }
 
-    todoList.innerHTML = docs.map(doc => {
+    todoList.innerHTML = docs.map((doc, index) => {
         const todo = doc.data();
+        const colors = getPositionColor(index, docs.length);
         return `
-            <li class="todo-item ${todo.completed ? 'completed' : ''}" data-id="${doc.id}">
+            <li class="todo-item ${todo.completed ? 'completed' : ''}"
+                data-id="${doc.id}"
+                draggable="true"
+                style="background-color: ${colors.bg}">
+                <span class="drag-handle">&#8942;&#8942;</span>
                 <input type="checkbox" class="todo-checkbox" ${todo.completed ? 'checked' : ''}>
                 <span class="todo-text">${escapeHtml(todo.text)}</span>
-                <span class="priority-badge priority-${todo.priority}">${todo.priority}</span>
+                <span class="priority-badge" style="background-color: ${colors.bg}; color: ${colors.text}">${todo.priority}</span>
                 <button class="delete-btn">&times;</button>
             </li>
         `;
     }).join('');
+
+    setupDragAndDrop();
 }
 
 // Escape HTML to prevent XSS
@@ -49,14 +80,19 @@ async function addTodo() {
     const text = todoInput.value.trim();
     if (!text) return;
 
+    let priority = parseInt(prioritySelect.value, 10);
+    if (isNaN(priority) || priority < 0) priority = 0;
+    if (priority > 10) priority = 10;
+
     await todosRef.add({
         text: text,
-        priority: prioritySelect.value,
+        priority: priority,
         completed: false,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
     todoInput.value = '';
+    prioritySelect.value = '5';
     todoInput.focus();
 }
 
@@ -68,6 +104,94 @@ async function toggleTodo(id, completed) {
 // Delete a todo
 async function deleteTodo(id) {
     await todosRef.doc(id).delete();
+}
+
+// Update priority for a todo
+async function updatePriority(id, newPriority) {
+    await todosRef.doc(id).update({ priority: newPriority });
+}
+
+// Setup drag and drop functionality
+function setupDragAndDrop() {
+    const items = todoList.querySelectorAll('.todo-item');
+
+    items.forEach(item => {
+        item.addEventListener('dragstart', handleDragStart);
+        item.addEventListener('dragend', handleDragEnd);
+        item.addEventListener('dragover', handleDragOver);
+        item.addEventListener('dragleave', handleDragLeave);
+        item.addEventListener('drop', handleDrop);
+    });
+}
+
+let draggedItem = null;
+
+function handleDragStart(e) {
+    draggedItem = this;
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', this.dataset.id);
+}
+
+function handleDragEnd(e) {
+    this.classList.remove('dragging');
+    document.querySelectorAll('.todo-item').forEach(item => {
+        item.classList.remove('drag-over');
+    });
+    draggedItem = null;
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    if (this !== draggedItem) {
+        this.classList.add('drag-over');
+    }
+}
+
+function handleDragLeave(e) {
+    this.classList.remove('drag-over');
+}
+
+async function handleDrop(e) {
+    e.preventDefault();
+    this.classList.remove('drag-over');
+
+    if (!draggedItem || this === draggedItem) return;
+
+    const draggedId = draggedItem.dataset.id;
+    const targetId = this.dataset.id;
+
+    // Find the docs
+    const draggedDoc = currentDocs.find(d => d.id === draggedId);
+    const targetDoc = currentDocs.find(d => d.id === targetId);
+
+    if (!draggedDoc || !targetDoc) return;
+
+    const targetPriority = targetDoc.data().priority;
+    const draggedIndex = currentDocs.findIndex(d => d.id === draggedId);
+    const targetIndex = currentDocs.findIndex(d => d.id === targetId);
+
+    let newPriority;
+
+    if (draggedIndex > targetIndex) {
+        // Moving up (to higher priority)
+        // Set priority slightly higher than target
+        const aboveDoc = targetIndex > 0 ? currentDocs[targetIndex - 1] : null;
+        const abovePriority = aboveDoc ? aboveDoc.data().priority : targetPriority + 1;
+        newPriority = Math.min(10, Math.round((targetPriority + abovePriority) / 2 * 10) / 10);
+        if (newPriority <= targetPriority) newPriority = Math.min(10, targetPriority + 0.5);
+    } else {
+        // Moving down (to lower priority)
+        // Set priority slightly lower than target
+        const belowDoc = targetIndex < currentDocs.length - 1 ? currentDocs[targetIndex + 1] : null;
+        const belowPriority = belowDoc ? belowDoc.data().priority : targetPriority - 1;
+        newPriority = Math.max(0, Math.round((targetPriority + belowPriority) / 2 * 10) / 10);
+        if (newPriority >= targetPriority) newPriority = Math.max(0, targetPriority - 0.5);
+    }
+
+    await updatePriority(draggedId, newPriority);
 }
 
 // Event listeners

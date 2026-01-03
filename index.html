@@ -15,11 +15,7 @@
 
         <div class="add-todo">
             <input type="text" id="todo-input" placeholder="What needs to be done?">
-            <select id="priority-select">
-                <option value="low">Low</option>
-                <option value="medium" selected>Medium</option>
-                <option value="high">High</option>
-            </select>
+            <input type="number" id="priority-select" min="0" max="10" value="5" placeholder="0-10">
             <button id="add-btn">Add</button>
         </div>
 

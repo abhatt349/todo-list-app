@@ -46,12 +46,13 @@ h1 {
 }
 
 #priority-select {
+    width: 60px;
     padding: 12px;
     border: 1px solid #ddd;
     border-radius: 8px;
     font-size: 14px;
     background: white;
-    cursor: pointer;
+    text-align: center;
 }
 
 #add-btn {
@@ -79,11 +80,23 @@ h1 {
     gap: 12px;
     padding: 12px;
     border-bottom: 1px solid #eee;
-    transition: background 0.2s;
+    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+    cursor: grab;
+    border-radius: 8px;
+    margin-bottom: 4px;
 }
 
 .todo-item:hover {
-    background: #fafafa;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.todo-item.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+.todo-item.drag-over {
+    border-top: 3px solid #4a90d9;
 }
 
 .todo-item.completed .todo-text {
@@ -104,26 +117,21 @@ h1 {
 }
 
 .priority-badge {
-    padding: 4px 8px;
-    border-radius: 4px;
+    padding: 4px 10px;
+    border-radius: 12px;
     font-size: 12px;
-    font-weight: 500;
-    text-transform: uppercase;
+    font-weight: 600;
+    min-width: 28px;
+    text-align: center;
+    background: #f0f0f0;
+    color: #666;
 }
 
-.priority-high {
-    background: #ffe0e0;
-    color: #d32f2f;
-}
-
-.priority-medium {
-    background: #fff3e0;
-    color: #f57c00;
-}
-
-.priority-low {
-    background: #e0f2e9;
-    color: #388e3c;
+.drag-handle {
+    color: #ccc;
+    cursor: grab;
+    font-size: 16px;
+    user-select: none;
 }
 
 .delete-btn {
