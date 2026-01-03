@@ -228,9 +228,14 @@ h1 {
     box-shadow: 0 0 8px rgba(74, 144, 217, 0.6);
 }
 
+.todo-item.completed {
+    background-color: #e8f5e9 !important;
+}
+
 .todo-item.completed .todo-text {
     text-decoration: line-through;
-    color: #999;
+    color: #666;
+    font-weight: 400;
 }
 
 .todo-checkbox {

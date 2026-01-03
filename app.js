@@ -376,7 +376,12 @@ async function addTodo() {
 
 // Toggle todo completion
 async function toggleTodo(id, completed) {
-    await todosRef.doc(id).update({ completed: !completed });
+    const updates = { completed: !completed };
+    // Set priority to 0 when marking as complete
+    if (!completed) {
+        updates.priority = 0;
+    }
+    await todosRef.doc(id).update(updates);
 }
 
 // Delete a todo
