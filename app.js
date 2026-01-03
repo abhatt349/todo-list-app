@@ -276,6 +276,8 @@ function renderTodoItem(doc) {
     if (isUrgent && !todo.completed) classes.push('urgent');
     if (overdue) classes.push('overdue');
 
+    const showSnooze = isUrgent && !todo.completed;
+
     return `
         <li class="${classes.join(' ')}"
             data-id="${doc.id}"
@@ -286,6 +288,7 @@ function renderTodoItem(doc) {
             <input type="checkbox" class="todo-checkbox" ${todo.completed ? 'checked' : ''}>
             <span class="todo-text">${escapeHtml(todo.text)}</span>
             ${hasNotes ? '<span class="notes-indicator" title="Has notes">📝</span>' : ''}
+            ${showSnooze ? '<button class="snooze-btn" title="Snooze 1 hour">😴</button>' : ''}
             <button class="due-time-btn" title="Set due time">${dueTimeDisplay || '⏰'}</button>
             <span class="priority-badge" style="background-color: ${colors.bg}; color: ${colors.text}">${formatPriority(todo.priority)}</span>
             <button class="delete-btn">&times;</button>
@@ -399,6 +402,15 @@ async function updatePriority(id, newPriority) {
 // Update due time for a todo
 async function updateDueTime(id, newDueTime) {
     await todosRef.doc(id).update({ dueTime: newDueTime || null });
+}
+
+// Snooze a todo for 1 hour (sets due time to 1 hour from now and lowers priority)
+async function snoozeTodo(id) {
+    const oneHourFromNow = Date.now() + (60 * 60 * 1000);
+    await todosRef.doc(id).update({
+        dueTime: oneHourFromNow,
+        priority: 8 // Move to High section
+    });
 }
 
 // Update notes for a todo
@@ -742,6 +754,10 @@ todoList.addEventListener('click', (e) => {
         showDueTimePicker(item);
     }
 
+    if (e.target.classList.contains('snooze-btn')) {
+        snoozeTodo(id);
+    }
+
     if (e.target.classList.contains('priority-badge')) {
         showPriorityEditor(item);
         return;
@@ -752,6 +768,7 @@ todoList.addEventListener('click', (e) => {
     if (!e.target.classList.contains('todo-checkbox') &&
         !e.target.classList.contains('delete-btn') &&
         !e.target.classList.contains('due-time-btn') &&
+        !e.target.classList.contains('snooze-btn') &&
         !e.target.classList.contains('priority-badge') &&
         !e.target.closest('.due-time-input-inline') &&
         !e.target.closest('.priority-input-inline')) {

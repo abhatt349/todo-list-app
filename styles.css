@@ -301,6 +301,21 @@ h1 {
     color: #d32f2f;
 }
 
+.snooze-btn {
+    background: none;
+    border: 1px solid #999;
+    border-radius: 4px;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.snooze-btn:hover {
+    background: #e3f2fd;
+    border-color: #2196f3;
+}
+
 .empty-state {
     text-align: center;
     color: #999;
