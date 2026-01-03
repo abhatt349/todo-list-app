@@ -790,7 +790,9 @@ detailDueInput.addEventListener('blur', async () => {
     } else {
         const parsed = parseNaturalDate(value);
         if (parsed) {
-            await todosRef.doc(selectedTodoId).update({ dueTime: parsed.getTime() });
+            // parseNaturalDate returns an ISO string, convert to timestamp
+            const timestamp = new Date(parsed).getTime();
+            await todosRef.doc(selectedTodoId).update({ dueTime: timestamp });
         }
     }
 });
