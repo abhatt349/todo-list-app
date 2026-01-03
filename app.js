@@ -33,10 +33,19 @@ function initApp() {
             }
         });
 
-        // Sort by priority descending
+        // Sort: uncompleted first (by priority desc), then completed (by priority desc)
         currentDocs = snapshot.docs.slice().sort((a, b) => {
-            const pA = migratePriority(a.data().priority);
-            const pB = migratePriority(b.data().priority);
+            const aData = a.data();
+            const bData = b.data();
+
+            // Completed items go to bottom
+            if (aData.completed !== bData.completed) {
+                return aData.completed ? 1 : -1;
+            }
+
+            // Within same completion status, sort by priority descending
+            const pA = migratePriority(aData.priority);
+            const pB = migratePriority(bData.priority);
             return pB - pA;
         });
         renderTodos(currentDocs);
