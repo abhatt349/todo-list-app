@@ -118,12 +118,13 @@ function renderTodos(docs) {
         return `
             <li class="${classes.join(' ')}"
                 data-id="${doc.id}"
+                data-duetime="${todo.dueTime || ''}"
                 draggable="true"
                 style="background-color: ${overdue ? '#ffcdd2' : colors.bg}">
                 <span class="drag-handle">&#8942;&#8942;</span>
                 <input type="checkbox" class="todo-checkbox" ${todo.completed ? 'checked' : ''}>
                 <span class="todo-text">${escapeHtml(todo.text)}</span>
-                ${dueTimeDisplay ? `<span class="due-time">${dueTimeDisplay}</span>` : ''}
+                <button class="due-time-btn" title="Set due time">${dueTimeDisplay || '⏰'}</button>
                 <span class="priority-badge" style="background-color: ${colors.bg}; color: ${colors.text}">${formatPriority(todo.priority)}</span>
                 <button class="delete-btn">&times;</button>
             </li>
@@ -185,6 +186,48 @@ async function deleteTodo(id) {
 // Update priority for a todo
 async function updatePriority(id, newPriority) {
     await todosRef.doc(id).update({ priority: newPriority });
+}
+
+// Update due time for a todo
+async function updateDueTime(id, newDueTime) {
+    await todosRef.doc(id).update({ dueTime: newDueTime || null });
+}
+
+// Show datetime picker for a todo item
+function showDueTimePicker(item) {
+    const id = item.dataset.id;
+    const currentDueTime = item.dataset.duetime;
+    const btn = item.querySelector('.due-time-btn');
+
+    // Create inline datetime input
+    const input = document.createElement('input');
+    input.type = 'datetime-local';
+    input.className = 'due-time-input-inline';
+    input.value = currentDueTime || '';
+
+    // Replace button with input
+    btn.style.display = 'none';
+    btn.insertAdjacentElement('afterend', input);
+    input.focus();
+
+    // Handle blur and change
+    const save = async () => {
+        await updateDueTime(id, input.value);
+        input.remove();
+        btn.style.display = '';
+    };
+
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            input.blur();
+        }
+        if (e.key === 'Escape') {
+            input.remove();
+            btn.style.display = '';
+        }
+    });
 }
 
 // Setup drag and drop functionality
@@ -290,6 +333,10 @@ todoList.addEventListener('click', (e) => {
 
     if (e.target.classList.contains('delete-btn')) {
         deleteTodo(id);
+    }
+
+    if (e.target.classList.contains('due-time-btn')) {
+        showDueTimePicker(item);
     }
 });
 
