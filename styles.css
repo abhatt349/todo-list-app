@@ -101,12 +101,25 @@ h1 {
 }
 
 .todo-item.dragging {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: grabbing;
+    transform: scale(0.98);
 }
 
 .todo-item.drag-over {
-    border-top: 3px solid #4a90d9;
+    position: relative;
+}
+
+.todo-item.drag-over::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: #4a90d9;
+    border-radius: 2px;
+    box-shadow: 0 0 8px rgba(74, 144, 217, 0.6);
 }
 
 .todo-item.completed .todo-text {
