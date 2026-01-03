@@ -517,6 +517,15 @@ function handleDragLeave(e) {
     this.classList.remove('drag-over');
 }
 
+// Get section bounds for a priority
+function getSectionBounds(priority) {
+    const p = priority || 0;
+    if (p >= 10) return { min: 10, max: 10 };
+    if (p >= 6) return { min: 6, max: 9.9 };
+    if (p >= 3) return { min: 3, max: 5.9 };
+    return { min: 0, max: 2.9 };
+}
+
 async function handleDrop(e) {
     e.preventDefault();
     this.classList.remove('drag-over');
@@ -533,9 +542,13 @@ async function handleDrop(e) {
     if (!draggedDoc || !targetDoc) return;
 
     const draggedData = draggedDoc.data();
-    const targetPriority = targetDoc.data().priority;
+    const targetData = targetDoc.data();
+    const targetPriority = targetData.priority;
     const draggedIndex = currentDocs.findIndex(d => d.id === draggedId);
     const targetIndex = currentDocs.findIndex(d => d.id === targetId);
+
+    // Get the target's section bounds
+    const sectionBounds = getSectionBounds(targetPriority);
 
     let newPriority;
     let clearDueTime = false;
@@ -547,19 +560,26 @@ async function handleDrop(e) {
 
     if (draggedIndex > targetIndex) {
         // Moving up (to higher priority)
-        // Set priority slightly higher than target
+        // Set priority slightly higher than target, but within section bounds
         const aboveDoc = targetIndex > 0 ? currentDocs[targetIndex - 1] : null;
-        const abovePriority = aboveDoc ? aboveDoc.data().priority : targetPriority + 1;
-        newPriority = Math.min(10, Math.round((targetPriority + abovePriority) / 2 * 10) / 10);
-        if (newPriority <= targetPriority) newPriority = Math.min(10, targetPriority + 0.5);
+        const abovePriority = aboveDoc ? aboveDoc.data().priority : sectionBounds.max + 0.1;
+        newPriority = Math.round((targetPriority + abovePriority) / 2 * 10) / 10;
+        if (newPriority <= targetPriority) newPriority = targetPriority + 0.1;
     } else {
         // Moving down (to lower priority)
-        // Set priority slightly lower than target
+        // Set priority slightly lower than target, but within section bounds
         const belowDoc = targetIndex < currentDocs.length - 1 ? currentDocs[targetIndex + 1] : null;
-        const belowPriority = belowDoc ? belowDoc.data().priority : targetPriority - 1;
-        newPriority = Math.max(0, Math.round((targetPriority + belowPriority) / 2 * 10) / 10);
-        if (newPriority >= targetPriority) newPriority = Math.max(0, targetPriority - 0.5);
+        const belowPriority = belowDoc ? belowDoc.data().priority : sectionBounds.min - 0.1;
+        newPriority = Math.round((targetPriority + belowPriority) / 2 * 10) / 10;
+        if (newPriority >= targetPriority) newPriority = targetPriority - 0.1;
     }
+
+    // Clamp to section bounds
+    newPriority = Math.max(sectionBounds.min, Math.min(sectionBounds.max, newPriority));
+    // Also clamp to overall bounds
+    newPriority = Math.max(0, Math.min(10, newPriority));
+    // Round to 1 decimal
+    newPriority = Math.round(newPriority * 10) / 10;
 
     // Update priority and optionally clear due time
     const updates = { priority: newPriority };
