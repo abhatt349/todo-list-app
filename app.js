@@ -42,6 +42,35 @@ function parseNaturalDate(input) {
     const now = new Date();
     let result = new Date(now);
 
+    // Word to number mapping
+    const wordToNum = {
+        'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
+        'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
+        'eleven': 11, 'twelve': 12, 'fifteen': 15, 'twenty': 20,
+        'thirty': 30, 'forty': 40, 'forty-five': 45, 'sixty': 60,
+        'a': 1, 'an': 1
+    };
+
+    // Check for "in X minutes/hours/days/weeks/months" pattern
+    const inMatch = text.match(/in\s+(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|forty-five|sixty)\s+(minute|hour|day|week|month)s?/i);
+    if (inMatch) {
+        let amount = wordToNum[inMatch[1]] || parseInt(inMatch[1]);
+        const unit = inMatch[2].toLowerCase();
+
+        if (unit === 'minute') {
+            result.setMinutes(result.getMinutes() + amount);
+        } else if (unit === 'hour') {
+            result.setHours(result.getHours() + amount);
+        } else if (unit === 'day') {
+            result.setDate(result.getDate() + amount);
+        } else if (unit === 'week') {
+            result.setDate(result.getDate() + (amount * 7));
+        } else if (unit === 'month') {
+            result.setMonth(result.getMonth() + amount);
+        }
+        return result.toISOString();
+    }
+
     // Default time to 9am if no time specified
     let timeSpecified = false;
     let hours = 9, minutes = 0;
