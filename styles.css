@@ -11,13 +11,102 @@ body {
     padding: 20px;
 }
 
-.container {
-    max-width: 500px;
+.app-wrapper {
+    display: flex;
+    gap: 20px;
+    max-width: 900px;
     margin: 0 auto;
+    align-items: flex-start;
+}
+
+.container {
+    flex: 1;
+    max-width: 500px;
     background: white;
     border-radius: 12px;
     padding: 24px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.detail-panel {
+    width: 300px;
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    display: none;
+    position: sticky;
+    top: 20px;
+}
+
+.detail-panel.open {
+    display: block;
+}
+
+.detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.detail-header h2 {
+    font-size: 16px;
+    color: #333;
+    margin: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.detail-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #999;
+    cursor: pointer;
+    padding: 0 4px;
+}
+
+.detail-close:hover {
+    color: #333;
+}
+
+.detail-field {
+    margin-bottom: 16px;
+}
+
+.detail-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.detail-field span {
+    font-size: 14px;
+    color: #333;
+}
+
+.detail-field textarea {
+    width: 100%;
+    min-height: 150px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.detail-field textarea:focus {
+    outline: none;
+    border-color: #4a90d9;
 }
 
 h1 {
@@ -98,6 +187,18 @@ h1 {
 
 .todo-item:hover {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.todo-item.selected {
+    box-shadow: 0 0 0 2px #4a90d9;
+}
+
+.todo-text {
+    cursor: pointer;
+}
+
+.todo-text:hover {
+    text-decoration: underline;
 }
 
 .todo-item.dragging {

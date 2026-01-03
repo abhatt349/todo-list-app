@@ -3,11 +3,18 @@ const prioritySelect = document.getElementById('priority-select');
 const dueTimeInput = document.getElementById('due-time-input');
 const addBtn = document.getElementById('add-btn');
 const todoList = document.getElementById('todo-list');
+const detailPanel = document.getElementById('detail-panel');
+const detailTitle = document.getElementById('detail-title');
+const detailDue = document.getElementById('detail-due');
+const detailPriority = document.getElementById('detail-priority');
+const detailNotes = document.getElementById('detail-notes');
+const detailClose = document.getElementById('detail-close');
 
 let db;
 let todosRef;
 let currentDocs = [];
 let notifiedIds = new Set(); // Track which todos have already triggered notifications
+let selectedTodoId = null; // Currently selected todo for detail panel
 
 // Request notification permission on load
 if ('Notification' in window && Notification.permission === 'default') {
@@ -393,6 +400,44 @@ async function updateDueTime(id, newDueTime) {
     await todosRef.doc(id).update({ dueTime: newDueTime || null });
 }
 
+// Update notes for a todo
+async function updateNotes(id, notes) {
+    await todosRef.doc(id).update({ notes: notes || '' });
+}
+
+// Open detail panel for a todo
+function openDetailPanel(id) {
+    const doc = currentDocs.find(d => d.id === id);
+    if (!doc) return;
+
+    const todo = doc.data();
+    selectedTodoId = id;
+
+    detailTitle.textContent = todo.text;
+    detailDue.textContent = todo.dueTime ? formatDueTime(todo.dueTime) : 'Not set';
+    detailPriority.textContent = formatPriority(todo.priority);
+    detailNotes.value = todo.notes || '';
+
+    detailPanel.classList.add('open');
+
+    // Highlight selected item
+    document.querySelectorAll('.todo-item').forEach(item => {
+        item.classList.remove('selected');
+        if (item.dataset.id === id) {
+            item.classList.add('selected');
+        }
+    });
+}
+
+// Close detail panel
+function closeDetailPanel() {
+    detailPanel.classList.remove('open');
+    selectedTodoId = null;
+    document.querySelectorAll('.todo-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+}
+
 // Show date input for a todo item (natural language)
 function showDueTimePicker(item) {
     const id = item.dataset.id;
@@ -644,6 +689,32 @@ todoList.addEventListener('click', (e) => {
     if (e.target.classList.contains('priority-badge')) {
         showPriorityEditor(item);
     }
+
+    // Click on todo text to open detail panel
+    if (e.target.classList.contains('todo-text')) {
+        openDetailPanel(id);
+    }
+});
+
+// Detail panel event listeners
+detailClose.addEventListener('click', closeDetailPanel);
+
+// Save notes on blur
+detailNotes.addEventListener('blur', () => {
+    if (selectedTodoId) {
+        updateNotes(selectedTodoId, detailNotes.value);
+    }
+});
+
+// Also save notes after typing stops (debounced)
+let notesTimeout;
+detailNotes.addEventListener('input', () => {
+    clearTimeout(notesTimeout);
+    notesTimeout = setTimeout(() => {
+        if (selectedTodoId) {
+            updateNotes(selectedTodoId, detailNotes.value);
+        }
+    }, 1000);
 });
 
 // Register service worker
