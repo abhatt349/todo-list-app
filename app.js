@@ -688,10 +688,17 @@ todoList.addEventListener('click', (e) => {
 
     if (e.target.classList.contains('priority-badge')) {
         showPriorityEditor(item);
+        return;
     }
 
-    // Click on todo text to open detail panel
-    if (e.target.classList.contains('todo-text')) {
+    // Click anywhere else on the item opens detail panel
+    // (but not on interactive elements like checkbox, buttons, etc.)
+    if (!e.target.classList.contains('todo-checkbox') &&
+        !e.target.classList.contains('delete-btn') &&
+        !e.target.classList.contains('due-time-btn') &&
+        !e.target.classList.contains('priority-badge') &&
+        !e.target.closest('.due-time-input-inline') &&
+        !e.target.closest('.priority-input-inline')) {
         openDetailPanel(id);
     }
 });
