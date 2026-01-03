@@ -7,6 +7,26 @@ const todoList = document.getElementById('todo-list');
 let db;
 let todosRef;
 let currentDocs = [];
+let notifiedIds = new Set(); // Track which todos have already triggered notifications
+
+// Request notification permission on load
+if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+}
+
+// Send notification for overdue todo
+function sendOverdueNotification(todo, id) {
+    if (notifiedIds.has(id)) return;
+    notifiedIds.add(id);
+
+    if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Todo Overdue!', {
+            body: todo.text,
+            icon: '/icon-192.png',
+            tag: id // Prevents duplicate notifications
+        });
+    }
+}
 
 // Check if a todo is overdue
 function isOverdue(todo) {
@@ -108,11 +128,14 @@ function initApp() {
 
     // Listen for real-time updates
     todosRef.onSnapshot((snapshot) => {
-        // Boost overdue items to max priority
+        // Boost overdue items to max priority and send notifications
         snapshot.docs.forEach(doc => {
             const data = doc.data();
-            if (isOverdue(data) && data.priority < 10) {
-                todosRef.doc(doc.id).update({ priority: 10 });
+            if (isOverdue(data)) {
+                if (data.priority < 10) {
+                    todosRef.doc(doc.id).update({ priority: 10 });
+                }
+                sendOverdueNotification(data, doc.id);
             }
         });
 
@@ -142,6 +165,16 @@ function initApp() {
     // Re-check for overdue items every minute
     setInterval(() => {
         if (currentDocs.length > 0) {
+            // Check for newly overdue items and send notifications
+            currentDocs.forEach(doc => {
+                const data = doc.data();
+                if (isOverdue(data)) {
+                    if (data.priority < 10) {
+                        todosRef.doc(doc.id).update({ priority: 10 });
+                    }
+                    sendOverdueNotification(data, doc.id);
+                }
+            });
             renderTodos(currentDocs);
         }
     }, 60000);
