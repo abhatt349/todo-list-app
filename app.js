@@ -216,20 +216,20 @@ function initApp() {
     }, 60000);
 }
 
-// Get color based on priority value (10 = red, 0 = green)
+// Get color based on priority value (10 = dark red, 0 = white)
 function getPriorityColor(priority) {
     const p = Math.max(0, Math.min(10, priority || 0));
-    const ratio = (10 - p) / 10; // 0 at priority 10, 1 at priority 0
+    const ratio = p / 10; // 0 at priority 0, 1 at priority 10
 
-    // Red (255, 200, 200) to Green (200, 255, 200)
+    // White (255, 255, 255) to Dark Red (200, 100, 100)
     const r = Math.round(255 - (55 * ratio));
-    const g = Math.round(200 + (55 * ratio));
-    const b = 200;
+    const g = Math.round(255 - (155 * ratio));
+    const b = Math.round(255 - (155 * ratio));
 
-    // Darker text color
-    const textR = Math.round(180 - (100 * ratio));
-    const textG = Math.round(50 + (100 * ratio));
-    const textB = Math.round(50);
+    // Text: gray to dark red
+    const textR = Math.round(100 + (80 * ratio));
+    const textG = Math.round(100 - (60 * ratio));
+    const textB = Math.round(100 - (60 * ratio));
 
     return {
         bg: `rgb(${r}, ${g}, ${b})`,
