@@ -269,6 +269,7 @@ function renderTodoItem(doc) {
     const colors = getPriorityColor(todo.priority);
     const overdue = isOverdue(todo);
     const dueTimeDisplay = todo.dueTime ? formatDueTime(todo.dueTime) : '';
+    const hasNotes = todo.notes && todo.notes.trim().length > 0;
     const classes = ['todo-item'];
     if (todo.completed) classes.push('completed');
     if (overdue) classes.push('overdue');
@@ -282,6 +283,7 @@ function renderTodoItem(doc) {
             <span class="drag-handle">&#8942;&#8942;</span>
             <input type="checkbox" class="todo-checkbox" ${todo.completed ? 'checked' : ''}>
             <span class="todo-text">${escapeHtml(todo.text)}</span>
+            ${hasNotes ? '<span class="notes-indicator" title="Has notes">📝</span>' : ''}
             <button class="due-time-btn" title="Set due time">${dueTimeDisplay || '⏰'}</button>
             <span class="priority-badge" style="background-color: ${colors.bg}; color: ${colors.text}">${formatPriority(todo.priority)}</span>
             <button class="delete-btn">&times;</button>
@@ -310,28 +312,20 @@ function renderTodos(docs) {
 
     let html = '';
 
-    // Render each section
-    if (sections.urgent.length > 0) {
-        html += `<li class="section-header section-urgent">Urgent (10)</li>`;
-        html += sections.urgent.map(renderTodoItem).join('');
-    }
+    // Always render all sections (so items can be dragged into them)
+    html += `<li class="section-header section-urgent" data-section="urgent" data-priority="10">Urgent (10)</li>`;
+    html += sections.urgent.map(renderTodoItem).join('');
 
-    if (sections.high.length > 0) {
-        html += `<li class="section-header section-high">High (6-9)</li>`;
-        html += sections.high.map(renderTodoItem).join('');
-    }
+    html += `<li class="section-header section-high" data-section="high" data-priority="7">High (6-9)</li>`;
+    html += sections.high.map(renderTodoItem).join('');
 
-    if (sections.medium.length > 0) {
-        html += `<li class="section-header section-medium">Medium (3-5)</li>`;
-        html += sections.medium.map(renderTodoItem).join('');
-    }
+    html += `<li class="section-header section-medium" data-section="medium" data-priority="4">Medium (3-5)</li>`;
+    html += sections.medium.map(renderTodoItem).join('');
 
-    if (sections.low.length > 0) {
-        html += `<li class="section-header section-low">Low (0-2)</li>`;
-        html += sections.low.map(renderTodoItem).join('');
-    }
+    html += `<li class="section-header section-low" data-section="low" data-priority="1">Low (0-2)</li>`;
+    html += sections.low.map(renderTodoItem).join('');
 
-    // Render completed section
+    // Render completed section only if there are completed items
     if (completed.length > 0) {
         html += `<li class="section-header section-completed">Completed</li>`;
         html += completed.map(renderTodoItem).join('');
@@ -522,6 +516,7 @@ function showPriorityEditor(item) {
 // Setup drag and drop functionality
 function setupDragAndDrop() {
     const items = todoList.querySelectorAll('.todo-item');
+    const sectionHeaders = todoList.querySelectorAll('.section-header[data-section]');
 
     items.forEach(item => {
         item.addEventListener('dragstart', handleDragStart);
@@ -529,6 +524,13 @@ function setupDragAndDrop() {
         item.addEventListener('dragover', handleDragOver);
         item.addEventListener('dragleave', handleDragLeave);
         item.addEventListener('drop', handleDrop);
+    });
+
+    // Allow dropping on section headers
+    sectionHeaders.forEach(header => {
+        header.addEventListener('dragover', handleSectionDragOver);
+        header.addEventListener('dragleave', handleSectionDragLeave);
+        header.addEventListener('drop', handleSectionDrop);
     });
 }
 
@@ -545,6 +547,9 @@ function handleDragEnd(e) {
     this.classList.remove('dragging');
     document.querySelectorAll('.todo-item').forEach(item => {
         item.classList.remove('drag-over-top', 'drag-over-bottom');
+    });
+    document.querySelectorAll('.section-header').forEach(header => {
+        header.classList.remove('drag-over');
     });
     draggedItem = null;
 }
@@ -573,6 +578,45 @@ function handleDragOver(e) {
 
 function handleDragLeave(e) {
     this.classList.remove('drag-over-top', 'drag-over-bottom');
+}
+
+// Section header drag handlers
+function handleSectionDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    this.classList.add('drag-over');
+}
+
+function handleSectionDragLeave(e) {
+    this.classList.remove('drag-over');
+}
+
+async function handleSectionDrop(e) {
+    e.preventDefault();
+    this.classList.remove('drag-over');
+
+    if (!draggedItem) return;
+
+    const draggedId = draggedItem.dataset.id;
+    const draggedDoc = currentDocs.find(d => d.id === draggedId);
+    if (!draggedDoc) return;
+
+    const draggedData = draggedDoc.data();
+
+    // Get the target priority from the section header
+    const newPriority = parseFloat(this.dataset.priority);
+
+    // Clear due time if dragging an overdue item to a lower section
+    let clearDueTime = false;
+    if (isOverdue(draggedData) && newPriority < 10) {
+        clearDueTime = true;
+    }
+
+    const updates = { priority: newPriority };
+    if (clearDueTime) {
+        updates.dueTime = null;
+    }
+    await todosRef.doc(draggedId).update(updates);
 }
 
 // Get section bounds for a priority

@@ -330,6 +330,17 @@ h1 {
     background: #fafafa;
 }
 
+.section-header.drag-over {
+    background: #e3f2fd;
+    border-color: #4a90d9;
+    box-shadow: 0 0 8px rgba(74, 144, 217, 0.4);
+}
+
+.notes-indicator {
+    font-size: 14px;
+    opacity: 0.7;
+}
+
 .due-time-btn {
     font-size: 12px;
     color: #666;
