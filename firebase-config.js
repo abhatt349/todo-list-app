@@ -1,12 +1,11 @@
 // Firebase configuration
-// TODO: Replace with your own Firebase config from https://console.firebase.google.com
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyBIehbAymtavA4iPZu2ll1dZZTebqaIpzI",
+    authDomain: "todo-list-app-fdc25.firebaseapp.com",
+    projectId: "todo-list-app-fdc25",
+    storageBucket: "todo-list-app-fdc25.firebasestorage.app",
+    messagingSenderId: "1003687297630",
+    appId: "1:1003687297630:web:dba61ee52e7564d6af2acf"
 };
 
 // Initialize Firebase
