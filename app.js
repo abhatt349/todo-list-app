@@ -563,7 +563,17 @@ async function handleDrop(e) {
     const draggedData = draggedDoc.data();
     const targetData = targetDoc.data();
     const targetPriority = targetData.priority;
+    const draggedIndex = currentDocs.findIndex(d => d.id === draggedId);
     const targetIndex = currentDocs.findIndex(d => d.id === targetId);
+
+    // Check if dropping in the same position (no actual move)
+    const droppingToSameSpot =
+        (dropAbove && targetIndex === draggedIndex + 1) ||  // Dropping above the item right below
+        (!dropAbove && targetIndex === draggedIndex - 1) || // Dropping below the item right above
+        (dropAbove && targetIndex === draggedIndex) ||      // Dropping above itself
+        (!dropAbove && targetIndex === draggedIndex);       // Dropping below itself
+
+    if (droppingToSameSpot) return;
 
     // Get the target's section bounds
     const sectionBounds = getSectionBounds(targetPriority);
