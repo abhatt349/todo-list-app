@@ -247,6 +247,41 @@ function formatDueTime(dueTime) {
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ` ${timeStr}`;
 }
 
+// Get priority section for a priority value
+function getPrioritySection(priority) {
+    const p = priority || 0;
+    if (p >= 10) return 'urgent';
+    if (p >= 6) return 'high';
+    if (p >= 3) return 'medium';
+    return 'low';
+}
+
+// Render a single todo item
+function renderTodoItem(doc) {
+    const todo = doc.data();
+    const colors = getPriorityColor(todo.priority);
+    const overdue = isOverdue(todo);
+    const dueTimeDisplay = todo.dueTime ? formatDueTime(todo.dueTime) : '';
+    const classes = ['todo-item'];
+    if (todo.completed) classes.push('completed');
+    if (overdue) classes.push('overdue');
+
+    return `
+        <li class="${classes.join(' ')}"
+            data-id="${doc.id}"
+            data-duetime="${todo.dueTime || ''}"
+            draggable="true"
+            style="background-color: ${overdue ? '#ffcdd2' : colors.bg}">
+            <span class="drag-handle">&#8942;&#8942;</span>
+            <input type="checkbox" class="todo-checkbox" ${todo.completed ? 'checked' : ''}>
+            <span class="todo-text">${escapeHtml(todo.text)}</span>
+            <button class="due-time-btn" title="Set due time">${dueTimeDisplay || '⏰'}</button>
+            <span class="priority-badge" style="background-color: ${colors.bg}; color: ${colors.text}">${formatPriority(todo.priority)}</span>
+            <button class="delete-btn">&times;</button>
+        </li>
+    `;
+}
+
 // Render todos to the DOM
 function renderTodos(docs) {
     if (docs.length === 0) {
@@ -254,31 +289,48 @@ function renderTodos(docs) {
         return;
     }
 
-    todoList.innerHTML = docs.map((doc) => {
-        const todo = doc.data();
-        const colors = getPriorityColor(todo.priority);
-        const overdue = isOverdue(todo);
-        const dueTimeDisplay = todo.dueTime ? formatDueTime(todo.dueTime) : '';
-        const classes = ['todo-item'];
-        if (todo.completed) classes.push('completed');
-        if (overdue) classes.push('overdue');
+    // Separate completed and uncompleted
+    const uncompleted = docs.filter(d => !d.data().completed);
+    const completed = docs.filter(d => d.data().completed);
 
-        return `
-            <li class="${classes.join(' ')}"
-                data-id="${doc.id}"
-                data-duetime="${todo.dueTime || ''}"
-                draggable="true"
-                style="background-color: ${overdue ? '#ffcdd2' : colors.bg}">
-                <span class="drag-handle">&#8942;&#8942;</span>
-                <input type="checkbox" class="todo-checkbox" ${todo.completed ? 'checked' : ''}>
-                <span class="todo-text">${escapeHtml(todo.text)}</span>
-                <button class="due-time-btn" title="Set due time">${dueTimeDisplay || '⏰'}</button>
-                <span class="priority-badge" style="background-color: ${colors.bg}; color: ${colors.text}">${formatPriority(todo.priority)}</span>
-                <button class="delete-btn">&times;</button>
-            </li>
-        `;
-    }).join('');
+    // Group uncompleted by priority section
+    const sections = {
+        urgent: uncompleted.filter(d => getPrioritySection(d.data().priority) === 'urgent'),
+        high: uncompleted.filter(d => getPrioritySection(d.data().priority) === 'high'),
+        medium: uncompleted.filter(d => getPrioritySection(d.data().priority) === 'medium'),
+        low: uncompleted.filter(d => getPrioritySection(d.data().priority) === 'low')
+    };
 
+    let html = '';
+
+    // Render each section
+    if (sections.urgent.length > 0) {
+        html += `<li class="section-header section-urgent">Urgent (10)</li>`;
+        html += sections.urgent.map(renderTodoItem).join('');
+    }
+
+    if (sections.high.length > 0) {
+        html += `<li class="section-header section-high">High (6-9)</li>`;
+        html += sections.high.map(renderTodoItem).join('');
+    }
+
+    if (sections.medium.length > 0) {
+        html += `<li class="section-header section-medium">Medium (3-5)</li>`;
+        html += sections.medium.map(renderTodoItem).join('');
+    }
+
+    if (sections.low.length > 0) {
+        html += `<li class="section-header section-low">Low (0-2)</li>`;
+        html += sections.low.map(renderTodoItem).join('');
+    }
+
+    // Render completed section
+    if (completed.length > 0) {
+        html += `<li class="section-header section-completed">Completed</li>`;
+        html += completed.map(renderTodoItem).join('');
+    }
+
+    todoList.innerHTML = html;
     setupDragAndDrop();
 }
 
