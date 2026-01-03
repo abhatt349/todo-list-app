@@ -279,6 +279,7 @@ function renderTodoItem(doc) {
     if (overdue) classes.push('overdue');
 
     const showSnooze = isUrgent && !todo.completed;
+    const dueTimeDatetime = todo.dueTime ? new Date(todo.dueTime).toISOString().slice(0, 16) : '';
 
     return `
         <li class="${classes.join(' ')}"
@@ -286,14 +287,31 @@ function renderTodoItem(doc) {
             data-duetime="${todo.dueTime || ''}"
             draggable="true"
             style="background-color: ${overdue ? '#ffcdd2' : colors.bg}">
-            <span class="drag-handle">&#8942;&#8942;</span>
-            <input type="checkbox" class="todo-checkbox" ${todo.completed ? 'checked' : ''}>
-            <span class="todo-text">${escapeHtml(todo.text)}</span>
-            ${hasNotes ? '<span class="notes-indicator" title="Has notes">📝</span>' : ''}
-            ${showSnooze ? '<button class="snooze-btn" title="Snooze 1 hour">😴</button>' : ''}
-            <button class="due-time-btn" title="Set due time">${dueTimeDisplay || '⏰'}</button>
-            <span class="priority-badge" style="background-color: ${colors.bg}; color: ${colors.text}">${formatPriority(todo.priority)}</span>
-            <button class="delete-btn">&times;</button>
+            <div class="todo-main-row">
+                <span class="drag-handle">&#8942;&#8942;</span>
+                <input type="checkbox" class="todo-checkbox" ${todo.completed ? 'checked' : ''}>
+                <span class="todo-text">${escapeHtml(todo.text)}</span>
+                ${hasNotes ? '<span class="notes-indicator" title="Has notes">📝</span>' : ''}
+                ${showSnooze ? '<button class="snooze-btn" title="Snooze 1 hour">😴</button>' : ''}
+                <button class="due-time-btn" title="Set due time">${dueTimeDisplay || '⏰'}</button>
+                <span class="priority-badge" style="background-color: ${colors.bg}; color: ${colors.text}">${formatPriority(todo.priority)}</span>
+                <button class="delete-btn">&times;</button>
+            </div>
+            <div class="todo-inline-detail">
+                <div class="inline-detail-field">
+                    <label>Due</label>
+                    <input type="text" class="inline-due-text" placeholder="e.g. tomorrow 3pm" value="${dueTimeDisplay}">
+                    <input type="datetime-local" class="inline-due-datetime" value="${dueTimeDatetime}">
+                </div>
+                <div class="inline-detail-field">
+                    <label>Priority</label>
+                    <input type="number" class="inline-priority" min="0" max="10" step="0.1" value="${todo.priority || 5}">
+                </div>
+                <div class="inline-detail-field">
+                    <label>Notes</label>
+                    <textarea class="inline-notes" placeholder="Add notes...">${escapeHtml(todo.notes || '')}</textarea>
+                </div>
+            </div>
         </li>
     `;
 }
@@ -820,18 +838,84 @@ todoList.addEventListener('click', (e) => {
         return;
     }
 
-    // Click anywhere else on the item opens detail panel
-    // (but not on interactive elements like checkbox, buttons, etc.)
+    // Click anywhere else on the item opens detail panel (desktop) or expands inline (mobile)
+    // (but not on interactive elements like checkbox, buttons, inputs, etc.)
     if (!e.target.classList.contains('todo-checkbox') &&
         !e.target.classList.contains('delete-btn') &&
         !e.target.classList.contains('due-time-btn') &&
         !e.target.classList.contains('snooze-btn') &&
         !e.target.classList.contains('priority-badge') &&
         !e.target.closest('.due-time-input-inline') &&
-        !e.target.closest('.priority-input-inline')) {
-        openDetailPanel(id);
+        !e.target.closest('.priority-input-inline') &&
+        !e.target.closest('.todo-inline-detail')) {
+
+        const isMobile = window.innerWidth <= 768;
+        if (isMobile) {
+            // Toggle inline expansion on mobile
+            const wasExpanded = item.classList.contains('expanded');
+            // Collapse all other items
+            document.querySelectorAll('.todo-item.expanded').forEach(el => {
+                el.classList.remove('expanded');
+            });
+            // Toggle this item
+            if (!wasExpanded) {
+                item.classList.add('expanded');
+            }
+        } else {
+            // Open detail panel on desktop
+            openDetailPanel(id);
+        }
     }
 });
+
+// Inline detail input handlers (for mobile)
+todoList.addEventListener('change', async (e) => {
+    const item = e.target.closest('.todo-item');
+    if (!item) return;
+    const id = item.dataset.id;
+
+    // Inline priority change
+    if (e.target.classList.contains('inline-priority')) {
+        const priority = parseFloat(e.target.value) || 5;
+        const clampedPriority = Math.max(0, Math.min(10, priority));
+        await todosRef.doc(id).update({ priority: clampedPriority });
+    }
+
+    // Inline datetime change
+    if (e.target.classList.contains('inline-due-datetime')) {
+        if (e.target.value) {
+            const timestamp = new Date(e.target.value).getTime();
+            await todosRef.doc(id).update({ dueTime: timestamp });
+        } else {
+            await todosRef.doc(id).update({ dueTime: null });
+        }
+    }
+});
+
+todoList.addEventListener('blur', async (e) => {
+    const item = e.target.closest('.todo-item');
+    if (!item) return;
+    const id = item.dataset.id;
+
+    // Inline due text (natural language)
+    if (e.target.classList.contains('inline-due-text')) {
+        const value = e.target.value.trim();
+        if (value === '') {
+            await todosRef.doc(id).update({ dueTime: null });
+        } else {
+            const parsed = parseNaturalDate(value);
+            if (parsed) {
+                const timestamp = new Date(parsed).getTime();
+                await todosRef.doc(id).update({ dueTime: timestamp });
+            }
+        }
+    }
+
+    // Inline notes
+    if (e.target.classList.contains('inline-notes')) {
+        await todosRef.doc(id).update({ notes: e.target.value || '' });
+    }
+}, true); // Use capture to catch blur events
 
 // Detail panel event listeners
 detailClose.addEventListener('click', closeDetailPanel);
