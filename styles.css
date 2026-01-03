@@ -110,7 +110,8 @@ body {
 }
 
 .detail-field input[type="text"],
-.detail-field input[type="number"] {
+.detail-field input[type="number"],
+.detail-field input[type="datetime-local"] {
     width: 100%;
     padding: 10px 12px;
     border: 1px solid #ddd;
@@ -120,9 +121,16 @@ body {
 }
 
 .detail-field input[type="text"]:focus,
-.detail-field input[type="number"]:focus {
+.detail-field input[type="number"]:focus,
+.detail-field input[type="datetime-local"]:focus {
     outline: none;
     border-color: #4a90d9;
+}
+
+.detail-due-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 h1 {
@@ -395,12 +403,25 @@ h1 {
     border-color: #4a90d9;
 }
 
+.due-time-picker-container {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+}
+
 .due-time-input-inline {
     font-size: 12px;
     padding: 4px 8px;
     border: 1px solid #4a90d9;
     border-radius: 4px;
-    width: 120px;
+    width: 100px;
+}
+
+.due-time-datetime-inline {
+    font-size: 12px;
+    padding: 3px 6px;
+    border: 1px solid #4a90d9;
+    border-radius: 4px;
 }
 
 .priority-badge {

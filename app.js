@@ -6,6 +6,7 @@ const todoList = document.getElementById('todo-list');
 const detailPanel = document.getElementById('detail-panel');
 const detailTitle = document.getElementById('detail-title');
 const detailDueInput = document.getElementById('detail-due-input');
+const detailDueDatetime = document.getElementById('detail-due-datetime');
 const detailPriorityInput = document.getElementById('detail-priority-input');
 const detailNotes = document.getElementById('detail-notes');
 const detailClose = document.getElementById('detail-close');
@@ -433,6 +434,12 @@ function openDetailPanel(id) {
 
     detailTitle.textContent = todo.text;
     detailDueInput.value = todo.dueTime ? formatDueTime(todo.dueTime) : '';
+    if (todo.dueTime) {
+        const date = new Date(todo.dueTime);
+        detailDueDatetime.value = date.toISOString().slice(0, 16);
+    } else {
+        detailDueDatetime.value = '';
+    }
     detailPriorityInput.value = todo.priority || 5;
     detailNotes.value = todo.notes || '';
 
@@ -460,35 +467,82 @@ function closeDetailPanel() {
 function showDueTimePicker(item) {
     const id = item.dataset.id;
     const btn = item.querySelector('.due-time-btn');
+    const currentDueTime = item.dataset.duetime;
+
+    // Create container for both inputs
+    const container = document.createElement('span');
+    container.className = 'due-time-picker-container';
 
     // Create inline text input for natural language
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.className = 'due-time-input-inline';
-    input.placeholder = 'tomorrow 3pm';
+    const textInput = document.createElement('input');
+    textInput.type = 'text';
+    textInput.className = 'due-time-input-inline';
+    textInput.placeholder = 'tomorrow 3pm';
 
-    // Replace button with input
+    // Create datetime-local input
+    const dateInput = document.createElement('input');
+    dateInput.type = 'datetime-local';
+    dateInput.className = 'due-time-datetime-inline';
+    if (currentDueTime) {
+        const date = new Date(parseInt(currentDueTime));
+        dateInput.value = date.toISOString().slice(0, 16);
+    }
+
+    container.appendChild(textInput);
+    container.appendChild(dateInput);
+
+    // Replace button with container
     btn.style.display = 'none';
-    btn.insertAdjacentElement('afterend', input);
-    input.focus();
+    btn.insertAdjacentElement('afterend', container);
+    textInput.focus();
 
-    // Handle save
-    const save = async () => {
-        const parsed = parseNaturalDate(input.value);
-        await updateDueTime(id, parsed);
-        input.remove();
+    // Cleanup function
+    const cleanup = () => {
+        container.remove();
         btn.style.display = '';
     };
 
-    input.addEventListener('blur', save);
-    input.addEventListener('keydown', (e) => {
+    // Handle save from text input
+    const saveText = async () => {
+        if (textInput.value.trim()) {
+            const parsed = parseNaturalDate(textInput.value);
+            if (parsed) {
+                await updateDueTime(id, new Date(parsed).getTime());
+            }
+        }
+        cleanup();
+    };
+
+    // Handle save from datetime input
+    const saveDate = async () => {
+        if (dateInput.value) {
+            const timestamp = new Date(dateInput.value).getTime();
+            await updateDueTime(id, timestamp);
+        }
+        cleanup();
+    };
+
+    textInput.addEventListener('blur', (e) => {
+        // Don't save if clicking on date input
+        if (e.relatedTarget === dateInput) return;
+        saveText();
+    });
+
+    textInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            input.blur();
+            saveText();
         }
         if (e.key === 'Escape') {
-            input.remove();
-            btn.style.display = '';
+            cleanup();
+        }
+    });
+
+    dateInput.addEventListener('change', saveDate);
+
+    dateInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            cleanup();
         }
     });
 }
@@ -818,6 +872,17 @@ detailDueInput.addEventListener('blur', async () => {
 detailDueInput.addEventListener('keydown', async (e) => {
     if (e.key === 'Enter') {
         detailDueInput.blur();
+    }
+});
+
+// Save due date from datetime picker
+detailDueDatetime.addEventListener('change', async () => {
+    if (!selectedTodoId) return;
+    if (detailDueDatetime.value) {
+        const timestamp = new Date(detailDueDatetime.value).getTime();
+        await todosRef.doc(selectedTodoId).update({ dueTime: timestamp });
+    } else {
+        await todosRef.doc(selectedTodoId).update({ dueTime: null });
     }
 });
 
