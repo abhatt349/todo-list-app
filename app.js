@@ -60,11 +60,10 @@ function initApp() {
     }, 60000);
 }
 
-// Get color based on position in list (red at top, green at bottom)
-function getPositionColor(index, total) {
-    if (total <= 1) return { bg: '#ffe0e0', text: '#d32f2f' };
-
-    const ratio = index / (total - 1);
+// Get color based on priority value (10 = red, 0 = green)
+function getPriorityColor(priority) {
+    const p = Math.max(0, Math.min(10, priority || 0));
+    const ratio = (10 - p) / 10; // 0 at priority 10, 1 at priority 0
 
     // Red (255, 200, 200) to Green (200, 255, 200)
     const r = Math.round(255 - (55 * ratio));
@@ -106,9 +105,9 @@ function renderTodos(docs) {
         return;
     }
 
-    todoList.innerHTML = docs.map((doc, index) => {
+    todoList.innerHTML = docs.map((doc) => {
         const todo = doc.data();
-        const colors = getPositionColor(index, docs.length);
+        const colors = getPriorityColor(todo.priority);
         const overdue = isOverdue(todo);
         const dueTimeDisplay = todo.dueTime ? formatDueTime(todo.dueTime) : '';
         const classes = ['todo-item'];
