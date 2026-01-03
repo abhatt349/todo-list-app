@@ -1,11 +1,18 @@
 const todoInput = document.getElementById('todo-input');
 const prioritySelect = document.getElementById('priority-select');
+const dueTimeInput = document.getElementById('due-time-input');
 const addBtn = document.getElementById('add-btn');
 const todoList = document.getElementById('todo-list');
 
 let db;
 let todosRef;
 let currentDocs = [];
+
+// Check if a todo is overdue
+function isOverdue(todo) {
+    if (!todo.dueTime || todo.completed) return false;
+    return new Date(todo.dueTime) <= new Date();
+}
 
 // Convert old string priorities to numeric
 function migratePriority(priority) {
@@ -33,23 +40,37 @@ function initApp() {
             }
         });
 
-        // Sort: uncompleted first (by priority desc), then completed (by priority desc)
+        // Sort: overdue first, then uncompleted (by priority desc), then completed
         currentDocs = snapshot.docs.slice().sort((a, b) => {
             const aData = a.data();
             const bData = b.data();
+            const aOverdue = isOverdue(aData);
+            const bOverdue = isOverdue(bData);
+
+            // Overdue items go to top (among uncompleted)
+            if (aOverdue !== bOverdue) {
+                return aOverdue ? -1 : 1;
+            }
 
             // Completed items go to bottom
             if (aData.completed !== bData.completed) {
                 return aData.completed ? 1 : -1;
             }
 
-            // Within same completion status, sort by priority descending
+            // Within same status, sort by priority descending
             const pA = migratePriority(aData.priority);
             const pB = migratePriority(bData.priority);
             return pB - pA;
         });
         renderTodos(currentDocs);
     });
+
+    // Re-check for overdue items every minute
+    setInterval(() => {
+        if (currentDocs.length > 0) {
+            renderTodos(currentDocs);
+        }
+    }, 60000);
 }
 
 // Get color based on position in list (red at top, green at bottom)
@@ -74,6 +95,23 @@ function getPositionColor(index, total) {
     };
 }
 
+// Format due time for display
+function formatDueTime(dueTime) {
+    if (!dueTime) return '';
+    const date = new Date(dueTime);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const isTomorrow = date.toDateString() === tomorrow.toDateString();
+
+    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    if (isToday) return `Today ${timeStr}`;
+    if (isTomorrow) return `Tomorrow ${timeStr}`;
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ` ${timeStr}`;
+}
+
 // Render todos to the DOM
 function renderTodos(docs) {
     if (docs.length === 0) {
@@ -84,14 +122,21 @@ function renderTodos(docs) {
     todoList.innerHTML = docs.map((doc, index) => {
         const todo = doc.data();
         const colors = getPositionColor(index, docs.length);
+        const overdue = isOverdue(todo);
+        const dueTimeDisplay = todo.dueTime ? formatDueTime(todo.dueTime) : '';
+        const classes = ['todo-item'];
+        if (todo.completed) classes.push('completed');
+        if (overdue) classes.push('overdue');
+
         return `
-            <li class="todo-item ${todo.completed ? 'completed' : ''}"
+            <li class="${classes.join(' ')}"
                 data-id="${doc.id}"
                 draggable="true"
-                style="background-color: ${colors.bg}">
+                style="background-color: ${overdue ? '#ffcdd2' : colors.bg}">
                 <span class="drag-handle">&#8942;&#8942;</span>
                 <input type="checkbox" class="todo-checkbox" ${todo.completed ? 'checked' : ''}>
                 <span class="todo-text">${escapeHtml(todo.text)}</span>
+                ${dueTimeDisplay ? `<span class="due-time">${dueTimeDisplay}</span>` : ''}
                 <span class="priority-badge" style="background-color: ${colors.bg}; color: ${colors.text}">${formatPriority(todo.priority)}</span>
                 <button class="delete-btn">&times;</button>
             </li>
@@ -124,15 +169,19 @@ async function addTodo() {
     if (isNaN(priority) || priority < 0) priority = 0;
     if (priority > 10) priority = 10;
 
+    const dueTime = dueTimeInput.value || null;
+
     await todosRef.add({
         text: text,
         priority: priority,
         completed: false,
+        dueTime: dueTime,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
     todoInput.value = '';
     prioritySelect.value = '5';
+    dueTimeInput.value = '';
     todoInput.focus();
 }
 

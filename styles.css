@@ -28,8 +28,17 @@ h1 {
 
 .add-todo {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     margin-bottom: 20px;
+}
+
+#due-time-input {
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    background: white;
 }
 
 #todo-input {
@@ -154,4 +163,20 @@ h1 {
     text-align: center;
     color: #999;
     padding: 40px 20px;
+}
+
+.due-time {
+    font-size: 11px;
+    color: #666;
+    white-space: nowrap;
+}
+
+.todo-item.overdue {
+    border-left: 4px solid #d32f2f;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(211, 47, 47, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(211, 47, 47, 0); }
 }
