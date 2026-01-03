@@ -109,6 +109,22 @@ body {
     border-color: #4a90d9;
 }
 
+.detail-field input[type="text"],
+.detail-field input[type="number"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.detail-field input[type="text"]:focus,
+.detail-field input[type="number"]:focus {
+    outline: none;
+    border-color: #4a90d9;
+}
+
 h1 {
     color: #333;
     margin-bottom: 20px;

@@ -5,8 +5,8 @@ const addBtn = document.getElementById('add-btn');
 const todoList = document.getElementById('todo-list');
 const detailPanel = document.getElementById('detail-panel');
 const detailTitle = document.getElementById('detail-title');
-const detailDue = document.getElementById('detail-due');
-const detailPriority = document.getElementById('detail-priority');
+const detailDueInput = document.getElementById('detail-due-input');
+const detailPriorityInput = document.getElementById('detail-priority-input');
 const detailNotes = document.getElementById('detail-notes');
 const detailClose = document.getElementById('detail-close');
 
@@ -420,8 +420,8 @@ function openDetailPanel(id) {
     detailPanel.style.backgroundColor = overdue ? '#ffcdd2' : colors.bg;
 
     detailTitle.textContent = todo.text;
-    detailDue.textContent = todo.dueTime ? formatDueTime(todo.dueTime) : 'Not set';
-    detailPriority.textContent = formatPriority(todo.priority);
+    detailDueInput.value = todo.dueTime ? formatDueTime(todo.dueTime) : '';
+    detailPriorityInput.value = todo.priority || 5;
     detailNotes.value = todo.notes || '';
 
     detailPanel.classList.add('open');
@@ -778,6 +778,44 @@ detailNotes.addEventListener('input', () => {
             updateNotes(selectedTodoId, detailNotes.value);
         }
     }, 1000);
+});
+
+// Save due date on blur (with natural language parsing)
+detailDueInput.addEventListener('blur', async () => {
+    if (!selectedTodoId) return;
+    const value = detailDueInput.value.trim();
+    if (value === '') {
+        // Clear the due date
+        await todosRef.doc(selectedTodoId).update({ dueTime: null });
+    } else {
+        const parsed = parseNaturalDate(value);
+        if (parsed) {
+            await todosRef.doc(selectedTodoId).update({ dueTime: parsed.getTime() });
+        }
+    }
+});
+
+// Save due date on Enter key
+detailDueInput.addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter') {
+        detailDueInput.blur();
+    }
+});
+
+// Save priority on change
+detailPriorityInput.addEventListener('change', async () => {
+    if (!selectedTodoId) return;
+    const priority = parseFloat(detailPriorityInput.value) || 5;
+    const clampedPriority = Math.max(0, Math.min(10, priority));
+    await todosRef.doc(selectedTodoId).update({ priority: clampedPriority });
+});
+
+// Save priority on blur
+detailPriorityInput.addEventListener('blur', async () => {
+    if (!selectedTodoId) return;
+    const priority = parseFloat(detailPriorityInput.value) || 5;
+    const clampedPriority = Math.max(0, Math.min(10, priority));
+    await todosRef.doc(selectedTodoId).update({ priority: clampedPriority });
 });
 
 // Register service worker
