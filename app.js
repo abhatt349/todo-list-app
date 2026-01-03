@@ -407,6 +407,11 @@ function openDetailPanel(id) {
     const todo = doc.data();
     selectedTodoId = id;
 
+    // Get the color based on priority (or red if overdue)
+    const overdue = isOverdue(todo);
+    const colors = getPriorityColor(todo.priority);
+    detailPanel.style.backgroundColor = overdue ? '#ffcdd2' : colors.bg;
+
     detailTitle.textContent = todo.text;
     detailDue.textContent = todo.dueTime ? formatDueTime(todo.dueTime) : 'Not set';
     detailPriority.textContent = formatPriority(todo.priority);
