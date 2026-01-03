@@ -288,11 +288,18 @@ async function handleDrop(e) {
 
     if (!draggedDoc || !targetDoc) return;
 
+    const draggedData = draggedDoc.data();
     const targetPriority = targetDoc.data().priority;
     const draggedIndex = currentDocs.findIndex(d => d.id === draggedId);
     const targetIndex = currentDocs.findIndex(d => d.id === targetId);
 
     let newPriority;
+    let clearDueTime = false;
+
+    // If dragging an overdue item downward, clear its due time
+    if (isOverdue(draggedData) && draggedIndex < targetIndex) {
+        clearDueTime = true;
+    }
 
     if (draggedIndex > targetIndex) {
         // Moving up (to higher priority)
@@ -310,7 +317,12 @@ async function handleDrop(e) {
         if (newPriority >= targetPriority) newPriority = Math.max(0, targetPriority - 0.5);
     }
 
-    await updatePriority(draggedId, newPriority);
+    // Update priority and optionally clear due time
+    const updates = { priority: newPriority };
+    if (clearDueTime) {
+        updates.dueTime = null;
+    }
+    await todosRef.doc(draggedId).update(updates);
 }
 
 // Event listeners
