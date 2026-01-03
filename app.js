@@ -10,6 +10,7 @@ const detailDueDatetime = document.getElementById('detail-due-datetime');
 const detailPriorityInput = document.getElementById('detail-priority-input');
 const detailNotes = document.getElementById('detail-notes');
 const detailClose = document.getElementById('detail-close');
+const detailBackdrop = document.getElementById('detail-backdrop');
 
 let db;
 let todosRef;
@@ -444,6 +445,7 @@ function openDetailPanel(id) {
     detailNotes.value = todo.notes || '';
 
     detailPanel.classList.add('open');
+    detailBackdrop.classList.add('open');
 
     // Highlight selected item
     document.querySelectorAll('.todo-item').forEach(item => {
@@ -457,6 +459,7 @@ function openDetailPanel(id) {
 // Close detail panel
 function closeDetailPanel() {
     detailPanel.classList.remove('open');
+    detailBackdrop.classList.remove('open');
     selectedTodoId = null;
     document.querySelectorAll('.todo-item').forEach(item => {
         item.classList.remove('selected');
@@ -832,6 +835,7 @@ todoList.addEventListener('click', (e) => {
 
 // Detail panel event listeners
 detailClose.addEventListener('click', closeDetailPanel);
+detailBackdrop.addEventListener('click', closeDetailPanel);
 
 // Save notes on blur
 detailNotes.addEventListener('blur', () => {

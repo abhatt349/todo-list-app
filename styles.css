@@ -43,6 +43,24 @@ body {
     display: block;
 }
 
+.detail-backdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+}
+
+.detail-backdrop.open {
+    display: block;
+    opacity: 1;
+}
+
 .detail-header {
     display: flex;
     justify-content: space-between;
@@ -472,10 +490,11 @@ h1 {
 
     .container {
         max-width: 100%;
-        border-radius: 12px 12px 0 0;
+        border-radius: 12px;
     }
 
     .detail-panel {
+        display: block;
         position: fixed;
         bottom: 0;
         left: 0;
@@ -488,23 +507,17 @@ h1 {
         z-index: 1000;
         transform: translateY(100%);
         transition: transform 0.3s ease-out;
+        visibility: hidden;
     }
 
     .detail-panel.open {
-        display: block;
         transform: translateY(0);
+        visibility: visible;
     }
 
-    /* Add overlay backdrop */
-    .detail-panel.open::before {
-        content: '';
-        position: fixed;
-        top: -100vh;
-        left: 0;
-        right: 0;
-        height: 200vh;
-        background: rgba(0, 0, 0, 0.4);
-        z-index: -1;
+    .detail-backdrop.open {
+        display: block;
+        opacity: 1;
     }
 
     .detail-header {
