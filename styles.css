@@ -580,6 +580,13 @@ h1 {
     margin-bottom: 20px;
 }
 
+.due-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
 #due-time-input {
     padding: 12px;
     border: 1px solid #ddd;
@@ -587,6 +594,20 @@ h1 {
     font-size: 14px;
     background: white;
     width: 140px;
+}
+
+.due-input-wrapper .info-icon {
+    position: static;
+    flex-shrink: 0;
+}
+
+.due-input-wrapper .info-tooltip {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 8px;
+    width: 280px;
+    z-index: 200;
 }
 
 #todo-input {

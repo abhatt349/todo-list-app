@@ -61,7 +61,38 @@
             <div class="add-todo">
                 <input type="text" id="todo-input" placeholder="What needs to be done?">
                 <input type="number" id="priority-select" min="0" max="10" step="0.1" value="5" placeholder="0-10">
-                <input type="text" id="due-time-input" placeholder="e.g. tomorrow 3pm">
+                <div class="due-input-wrapper">
+                    <input type="text" id="due-time-input" placeholder="e.g. tomorrow 3pm">
+                    <span class="info-icon" id="add-due-info-icon" title="Click for help">ⓘ</span>
+                    <div class="info-tooltip add-due-tooltip" id="add-due-info-tooltip">
+                        <div class="info-tooltip-header">Smart Date Parsing</div>
+                        <div class="info-tooltip-content">
+                            <p><strong>Relative dates:</strong></p>
+                            <ul>
+                                <li>today, tomorrow, yesterday</li>
+                                <li>next week, next month</li>
+                                <li>next Monday, next Friday, etc.</li>
+                            </ul>
+                            <p><strong>Time intervals:</strong></p>
+                            <ul>
+                                <li>in 5 minutes, in 30 minutes</li>
+                                <li>in 2 hours, in an hour</li>
+                                <li>in 3 days, in a week</li>
+                            </ul>
+                            <p><strong>Specific dates:</strong></p>
+                            <ul>
+                                <li>Jan 15, March 3</li>
+                                <li>1/15, 3/3/2025</li>
+                                <li>end of month</li>
+                            </ul>
+                            <p><strong>With time:</strong></p>
+                            <ul>
+                                <li>tomorrow 3pm, next Monday 9am</li>
+                                <li>Jan 15 2:30pm</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
                 <button id="add-btn">Add</button>
                 <div class="tag-input-container" id="tags-input-container">
                     <input type="text" id="tags-input" placeholder="Add tags...">

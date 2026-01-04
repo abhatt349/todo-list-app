@@ -41,6 +41,8 @@ const detailClose = document.getElementById('detail-close');
 const detailBackdrop = document.getElementById('detail-backdrop');
 const dueInfoIcon = document.getElementById('due-info-icon');
 const dueInfoTooltip = document.getElementById('due-info-tooltip');
+const addDueInfoIcon = document.getElementById('add-due-info-icon');
+const addDueInfoTooltip = document.getElementById('add-due-info-tooltip');
 const advancedToggle = document.getElementById('advanced-toggle');
 const advancedOptions = document.querySelector('.advanced-options');
 const scheduledTimeText = document.getElementById('scheduled-time-text');
@@ -1644,6 +1646,19 @@ dueInfoIcon.addEventListener('click', (e) => {
 detailPanel.addEventListener('click', (e) => {
     if (!dueInfoIcon.contains(e.target) && !dueInfoTooltip.contains(e.target)) {
         dueInfoTooltip.classList.remove('open');
+    }
+});
+
+// Add form due date info icon toggle
+addDueInfoIcon.addEventListener('click', (e) => {
+    e.stopPropagation();
+    addDueInfoTooltip.classList.toggle('open');
+});
+
+// Close add form tooltip when clicking elsewhere
+document.addEventListener('click', (e) => {
+    if (!addDueInfoIcon.contains(e.target) && !addDueInfoTooltip.contains(e.target)) {
+        addDueInfoTooltip.classList.remove('open');
     }
 });
 
