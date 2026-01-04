@@ -3,10 +3,10 @@ const authContainer = document.getElementById('auth-container');
 const appWrapper = document.getElementById('app-wrapper');
 const loginForm = document.getElementById('login-form');
 const signupForm = document.getElementById('signup-form');
-const loginEmail = document.getElementById('login-email');
+const loginUsername = document.getElementById('login-username');
 const loginPassword = document.getElementById('login-password');
 const loginError = document.getElementById('login-error');
-const signupEmail = document.getElementById('signup-email');
+const signupUsername = document.getElementById('signup-username');
 const signupPassword = document.getElementById('signup-password');
 const signupConfirm = document.getElementById('signup-confirm');
 const signupError = document.getElementById('signup-error');
@@ -53,9 +53,9 @@ const deletedList = document.getElementById('deleted-list');
 const deletedCount = document.getElementById('deleted-count');
 
 let db;
-let auth;
 let todosRef;
-let currentUser = null;
+let usersRef;
+let currentUser = null; // { id, username }
 let unsubscribeTodos = null;
 let currentDocs = [];
 let deletedDocs = [];
@@ -270,33 +270,50 @@ function parseNaturalDate(input) {
 }
 
 // Initialize Firebase and load todos
+// Simple hash function for passwords
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Show the app after login
+function showApp() {
+    userEmailDisplay.textContent = currentUser.username;
+    authContainer.style.display = 'none';
+    appWrapper.style.display = 'flex';
+    startTodosListener();
+}
+
+// Show the login screen
+function showLogin() {
+    currentUser = null;
+    localStorage.removeItem('todoUser');
+    if (unsubscribeTodos) {
+        unsubscribeTodos();
+        unsubscribeTodos = null;
+    }
+    currentDocs = [];
+    deletedDocs = [];
+    authContainer.style.display = 'flex';
+    appWrapper.style.display = 'none';
+}
+
 function initApp() {
     db = firebase.firestore();
-    auth = firebase.auth();
     todosRef = db.collection('todos');
+    usersRef = db.collection('users');
 
-    // Listen for auth state changes
-    auth.onAuthStateChanged((user) => {
-        if (user) {
-            // User is signed in
-            currentUser = user;
-            userEmailDisplay.textContent = user.email;
-            authContainer.style.display = 'none';
-            appWrapper.style.display = 'flex';
-            startTodosListener();
-        } else {
-            // User is signed out
-            currentUser = null;
-            if (unsubscribeTodos) {
-                unsubscribeTodos();
-                unsubscribeTodos = null;
-            }
-            currentDocs = [];
-            deletedDocs = [];
-            authContainer.style.display = 'flex';
-            appWrapper.style.display = 'none';
-        }
-    });
+    // Check for saved session
+    const savedUser = localStorage.getItem('todoUser');
+    if (savedUser) {
+        currentUser = JSON.parse(savedUser);
+        showApp();
+    } else {
+        showLogin();
+    }
 }
 
 // Start listening for todos for the current user
@@ -306,7 +323,7 @@ function startTodosListener() {
     }
 
     // Listen for real-time updates on user's todos
-    unsubscribeTodos = todosRef.where('userId', '==', currentUser.uid).onSnapshot((snapshot) => {
+    unsubscribeTodos = todosRef.where('userId', '==', currentUser.id).onSnapshot((snapshot) => {
         // Separate active and deleted todos
         const activeDocs = [];
         const deleted = [];
@@ -793,7 +810,7 @@ async function addTodo() {
     const notes = notesInput.value.trim();
 
     await todosRef.add({
-        userId: currentUser.uid,
+        userId: currentUser.id,
         text: text,
         priority: priority,
         completed: false,
@@ -1331,7 +1348,7 @@ async function importBackup(file) {
             // Create new todo assigned to current user
             await todosRef.add({
                 ...data,
-                userId: currentUser.uid,
+                userId: currentUser.id,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             imported++;
@@ -1729,14 +1746,35 @@ loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     loginError.textContent = '';
 
-    const email = loginEmail.value.trim();
+    const username = loginUsername.value.trim().toLowerCase();
     const password = loginPassword.value;
 
     try {
-        await auth.signInWithEmailAndPassword(email, password);
+        // Find user by username
+        const snapshot = await usersRef.where('username', '==', username).get();
+        if (snapshot.empty) {
+            loginError.textContent = 'User not found';
+            return;
+        }
+
+        const userDoc = snapshot.docs[0];
+        const userData = userDoc.data();
+
+        // Check password
+        const hashedPassword = await hashPassword(password);
+        if (userData.password !== hashedPassword) {
+            loginError.textContent = 'Incorrect password';
+            return;
+        }
+
+        // Login successful
+        currentUser = { id: userDoc.id, username: userData.username };
+        localStorage.setItem('todoUser', JSON.stringify(currentUser));
         loginForm.reset();
+        showApp();
     } catch (error) {
-        loginError.textContent = error.message;
+        loginError.textContent = 'Login failed. Please try again.';
+        console.error('Login error:', error);
     }
 });
 
@@ -1744,9 +1782,20 @@ signupForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     signupError.textContent = '';
 
-    const email = signupEmail.value.trim();
+    const username = signupUsername.value.trim().toLowerCase();
     const password = signupPassword.value;
     const confirm = signupConfirm.value;
+
+    // Validate username
+    if (!/^[a-z0-9_]+$/.test(username)) {
+        signupError.textContent = 'Username can only contain letters, numbers, and underscores';
+        return;
+    }
+
+    if (username.length < 3) {
+        signupError.textContent = 'Username must be at least 3 characters';
+        return;
+    }
 
     if (password !== confirm) {
         signupError.textContent = 'Passwords do not match';
@@ -1754,19 +1803,34 @@ signupForm.addEventListener('submit', async (e) => {
     }
 
     try {
-        await auth.createUserWithEmailAndPassword(email, password);
+        // Check if username already exists
+        const existing = await usersRef.where('username', '==', username).get();
+        if (!existing.empty) {
+            signupError.textContent = 'Username already taken';
+            return;
+        }
+
+        // Create user
+        const hashedPassword = await hashPassword(password);
+        const newUserRef = await usersRef.add({
+            username: username,
+            password: hashedPassword,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Auto-login after signup
+        currentUser = { id: newUserRef.id, username: username };
+        localStorage.setItem('todoUser', JSON.stringify(currentUser));
         signupForm.reset();
+        showApp();
     } catch (error) {
-        signupError.textContent = error.message;
+        signupError.textContent = 'Signup failed. Please try again.';
+        console.error('Signup error:', error);
     }
 });
 
-logoutBtn.addEventListener('click', async () => {
-    try {
-        await auth.signOut();
-    } catch (error) {
-        console.error('Logout failed:', error);
-    }
+logoutBtn.addEventListener('click', () => {
+    showLogin();
 });
 
 // Auth tab switching

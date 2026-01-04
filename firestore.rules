@@ -1,15 +1,17 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /todos/{todo} {
-      // Users can only read todos they own
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+    // Users collection - allow signup and login queries
+    match /users/{userId} {
+      allow read, create: if true;
+      // Don't allow updates or deletes to user documents
+      allow update, delete: if false;
+    }
 
-      // Users can create todos if they set the userId to their own uid
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-
-      // Users can update/delete only their own todos
-      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    // Todos collection - allow all operations
+    // Note: Without server-side auth, client validates userId
+    match /todos/{todoId} {
+      allow read, write: if true;
     }
   }
 }
