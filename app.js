@@ -14,6 +14,28 @@ const authTabs = document.querySelectorAll('.auth-tab');
 const userEmailDisplay = document.getElementById('user-email');
 const logoutBtn = document.getElementById('logout-btn');
 
+// Email settings modal elements
+const emailSettingsBtn = document.getElementById('email-settings-btn');
+const emailModalBackdrop = document.getElementById('email-modal-backdrop');
+const emailSettingsModal = document.getElementById('email-settings-modal');
+const emailModalClose = document.getElementById('email-modal-close');
+const emailList = document.getElementById('email-list');
+const newEmailInput = document.getElementById('new-email-input');
+const addEmailBtn = document.getElementById('add-email-btn');
+const emailError = document.getElementById('email-error');
+const emailSuccess = document.getElementById('email-success');
+
+// Phone settings modal elements
+const phoneSettingsBtn = document.getElementById('phone-settings-btn');
+const phoneModalBackdrop = document.getElementById('phone-modal-backdrop');
+const phoneSettingsModal = document.getElementById('phone-settings-modal');
+const phoneModalClose = document.getElementById('phone-modal-close');
+const phoneList = document.getElementById('phone-list');
+const newPhoneInput = document.getElementById('new-phone-input');
+const addPhoneBtn = document.getElementById('add-phone-btn');
+const phoneError = document.getElementById('phone-error');
+const phoneSuccess = document.getElementById('phone-success');
+
 // App elements
 const todoInput = document.getElementById('todo-input');
 const prioritySelect = document.getElementById('priority-select');
@@ -34,8 +56,38 @@ const detailScheduledList = document.getElementById('detail-scheduled-list');
 const addDetailScheduledBtn = document.getElementById('add-detail-scheduled-btn');
 const addBtn = document.getElementById('add-btn');
 
+// Email notification scheduling elements (add form)
+const addNotificationsList = document.getElementById('add-notifications-list');
+const addNotificationTimeText = document.getElementById('add-notification-time-text');
+const addNotificationTimeDatetime = document.getElementById('add-notification-time-datetime');
+const addNotificationMessage = document.getElementById('add-notification-message');
+const addNotificationBtn = document.getElementById('add-notification-btn');
+
+// Email notification scheduling elements (detail panel)
+const detailNotificationsList = document.getElementById('detail-notifications-list');
+const detailNotificationTimeText = document.getElementById('detail-notification-time-text');
+const detailNotificationTimeDatetime = document.getElementById('detail-notification-time-datetime');
+const detailNotificationMessage = document.getElementById('detail-notification-message');
+const addDetailNotificationBtn = document.getElementById('add-detail-notification-btn');
+
+// SMS notification scheduling elements (add form)
+const addSmsList = document.getElementById('add-sms-list');
+const addSmsTimeText = document.getElementById('add-sms-time-text');
+const addSmsTimeDatetime = document.getElementById('add-sms-time-datetime');
+const addSmsMessage = document.getElementById('add-sms-message');
+const addSmsBtn = document.getElementById('add-sms-btn');
+
+// SMS notification scheduling elements (detail panel)
+const detailSmsList = document.getElementById('detail-sms-list');
+const detailSmsTimeText = document.getElementById('detail-sms-time-text');
+const detailSmsTimeDatetime = document.getElementById('detail-sms-time-datetime');
+const detailSmsMessage = document.getElementById('detail-sms-message');
+const addDetailSmsBtn = document.getElementById('add-detail-sms-btn');
+
 // Track scheduled changes for add form
 let addFormScheduledChanges = [];
+let addFormScheduledNotifications = [];
+let addFormScheduledSms = [];
 const todoList = document.getElementById('todo-list');
 const searchInput = document.getElementById('search-input');
 const timezoneSelect = document.getElementById('timezone-select');
@@ -78,6 +130,275 @@ let selectedTodoId = null; // Currently selected todo for detail panel
 let searchQuery = ''; // Current search query
 let selectedFilterTags = []; // Tags selected for filtering
 let selectedTimezone = localStorage.getItem('timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+// Recurrence types
+const RECURRENCE_TYPES = {
+    NONE: 'none',
+    DAILY: 'daily',
+    WEEKLY: 'weekly',
+    MONTHLY: 'monthly',
+    YEARLY: 'yearly',
+    CUSTOM: 'custom'
+};
+
+// Monthly recurrence modes
+const MONTHLY_MODES = {
+    DAY_OF_MONTH: 'dayOfMonth',      // e.g., "on the 15th"
+    DAY_OF_WEEK: 'dayOfWeek'          // e.g., "on the 2nd Tuesday"
+};
+
+// Recurrence end types
+const RECURRENCE_END_TYPES = {
+    NEVER: 'never',
+    ON_DATE: 'onDate',
+    AFTER_COUNT: 'afterCount'
+};
+
+// Day names for weekly recurrence
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const FULL_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+// Get ordinal suffix for a number (1st, 2nd, 3rd, etc.)
+function getOrdinalSuffix(n) {
+    const s = ['th', 'st', 'nd', 'rd'];
+    const v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+// Get the week number of a day in its month (1st, 2nd, 3rd, 4th, or last)
+function getWeekOfMonth(date) {
+    const dayOfMonth = date.getDate();
+    return Math.ceil(dayOfMonth / 7);
+}
+
+// Check if a date is in the last week of its month
+function isLastWeekOfMonth(date) {
+    const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+    return date.getDate() > lastDay - 7;
+}
+
+// Format recurrence rule as human-readable string
+function formatRecurrenceRule(recurrence) {
+    if (!recurrence || recurrence.type === RECURRENCE_TYPES.NONE) {
+        return 'Does not repeat';
+    }
+
+    let text = '';
+    const interval = recurrence.interval || 1;
+
+    switch (recurrence.type) {
+        case RECURRENCE_TYPES.DAILY:
+            text = interval === 1 ? 'Daily' : `Every ${interval} days`;
+            break;
+
+        case RECURRENCE_TYPES.WEEKLY:
+            if (interval === 1) {
+                if (recurrence.daysOfWeek && recurrence.daysOfWeek.length > 0) {
+                    const days = recurrence.daysOfWeek.map(d => DAY_NAMES[d]).join(', ');
+                    text = `Weekly on ${days}`;
+                } else {
+                    text = 'Weekly';
+                }
+            } else {
+                if (recurrence.daysOfWeek && recurrence.daysOfWeek.length > 0) {
+                    const days = recurrence.daysOfWeek.map(d => DAY_NAMES[d]).join(', ');
+                    text = `Every ${interval} weeks on ${days}`;
+                } else {
+                    text = `Every ${interval} weeks`;
+                }
+            }
+            break;
+
+        case RECURRENCE_TYPES.MONTHLY:
+            if (recurrence.monthlyMode === MONTHLY_MODES.DAY_OF_WEEK) {
+                const weekNum = recurrence.weekOfMonth === 'last' ? 'last' : getOrdinalSuffix(recurrence.weekOfMonth);
+                const dayName = FULL_DAY_NAMES[recurrence.dayOfWeek];
+                text = interval === 1
+                    ? `Monthly on the ${weekNum} ${dayName}`
+                    : `Every ${interval} months on the ${weekNum} ${dayName}`;
+            } else {
+                const dayNum = getOrdinalSuffix(recurrence.dayOfMonth || 1);
+                text = interval === 1
+                    ? `Monthly on the ${dayNum}`
+                    : `Every ${interval} months on the ${dayNum}`;
+            }
+            break;
+
+        case RECURRENCE_TYPES.YEARLY:
+            text = interval === 1 ? 'Yearly' : `Every ${interval} years`;
+            break;
+
+        case RECURRENCE_TYPES.CUSTOM:
+            const unit = recurrence.customUnit || 'days';
+            const customInterval = recurrence.customInterval || 1;
+            text = `Every ${customInterval} ${unit}`;
+            break;
+    }
+
+    // Add end condition
+    if (recurrence.endType === RECURRENCE_END_TYPES.ON_DATE && recurrence.endDate) {
+        const endDate = new Date(recurrence.endDate);
+        text += `, until ${endDate.toLocaleDateString()}`;
+    } else if (recurrence.endType === RECURRENCE_END_TYPES.AFTER_COUNT && recurrence.endCount) {
+        text += `, ${recurrence.endCount} times`;
+    }
+
+    return text;
+}
+
+// Calculate the next occurrence date based on recurrence rule
+function calculateNextOccurrence(currentDueDate, recurrence) {
+    if (!recurrence || recurrence.type === RECURRENCE_TYPES.NONE) {
+        return null;
+    }
+
+    const current = currentDueDate ? new Date(currentDueDate) : new Date();
+    let next = new Date(current);
+    const interval = recurrence.interval || 1;
+
+    switch (recurrence.type) {
+        case RECURRENCE_TYPES.DAILY:
+            next.setDate(next.getDate() + interval);
+            break;
+
+        case RECURRENCE_TYPES.WEEKLY:
+            if (recurrence.daysOfWeek && recurrence.daysOfWeek.length > 0) {
+                // Find the next day in the list
+                const currentDay = next.getDay();
+                const sortedDays = [...recurrence.daysOfWeek].sort((a, b) => a - b);
+
+                // Find next day in current week
+                let nextDay = sortedDays.find(d => d > currentDay);
+
+                if (nextDay !== undefined) {
+                    // Found a day later this week
+                    next.setDate(next.getDate() + (nextDay - currentDay));
+                } else {
+                    // Go to first day of next week cycle
+                    const daysUntilNextCycle = 7 * interval - currentDay + sortedDays[0];
+                    next.setDate(next.getDate() + daysUntilNextCycle);
+                }
+            } else {
+                next.setDate(next.getDate() + (7 * interval));
+            }
+            break;
+
+        case RECURRENCE_TYPES.MONTHLY:
+            if (recurrence.monthlyMode === MONTHLY_MODES.DAY_OF_WEEK) {
+                // e.g., "2nd Tuesday of the month"
+                const targetWeek = recurrence.weekOfMonth;
+                const targetDay = recurrence.dayOfWeek;
+
+                // Move to next month
+                next.setMonth(next.getMonth() + interval);
+                next.setDate(1);
+
+                if (targetWeek === 'last') {
+                    // Go to last day of month
+                    next.setMonth(next.getMonth() + 1);
+                    next.setDate(0);
+                    // Find the last occurrence of the target day
+                    while (next.getDay() !== targetDay) {
+                        next.setDate(next.getDate() - 1);
+                    }
+                } else {
+                    // Find the nth occurrence of the target day
+                    const firstDayOfMonth = next.getDay();
+                    let daysToAdd = targetDay - firstDayOfMonth;
+                    if (daysToAdd < 0) daysToAdd += 7;
+                    daysToAdd += (targetWeek - 1) * 7;
+                    next.setDate(1 + daysToAdd);
+                }
+            } else {
+                // Day of month mode
+                const targetDay = recurrence.dayOfMonth || current.getDate();
+                next.setMonth(next.getMonth() + interval);
+
+                // Handle end-of-month edge cases
+                const daysInMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+                next.setDate(Math.min(targetDay, daysInMonth));
+            }
+            break;
+
+        case RECURRENCE_TYPES.YEARLY:
+            next.setFullYear(next.getFullYear() + interval);
+            // Handle Feb 29 on non-leap years
+            if (next.getMonth() === 1 && current.getDate() === 29) {
+                const daysInFeb = new Date(next.getFullYear(), 2, 0).getDate();
+                next.setDate(Math.min(29, daysInFeb));
+            }
+            break;
+
+        case RECURRENCE_TYPES.CUSTOM:
+            const customInterval = recurrence.customInterval || 1;
+            const unit = recurrence.customUnit || 'days';
+
+            switch (unit) {
+                case 'days':
+                    next.setDate(next.getDate() + customInterval);
+                    break;
+                case 'weeks':
+                    next.setDate(next.getDate() + (customInterval * 7));
+                    break;
+                case 'months':
+                    next.setMonth(next.getMonth() + customInterval);
+                    break;
+            }
+            break;
+    }
+
+    // Check if we've exceeded the end condition
+    if (recurrence.endType === RECURRENCE_END_TYPES.ON_DATE && recurrence.endDate) {
+        if (next > new Date(recurrence.endDate)) {
+            return null;
+        }
+    }
+
+    // Note: endCount is handled in the completion logic, not here
+
+    return next.getTime();
+}
+
+// Check if recurrence has remaining occurrences
+function hasRemainingOccurrences(recurrence) {
+    if (!recurrence || recurrence.type === RECURRENCE_TYPES.NONE) {
+        return false;
+    }
+
+    if (recurrence.endType === RECURRENCE_END_TYPES.NEVER) {
+        return true;
+    }
+
+    if (recurrence.endType === RECURRENCE_END_TYPES.ON_DATE && recurrence.endDate) {
+        return new Date() < new Date(recurrence.endDate);
+    }
+
+    if (recurrence.endType === RECURRENCE_END_TYPES.AFTER_COUNT && recurrence.endCount) {
+        const completedCount = recurrence.completedCount || 0;
+        return completedCount < recurrence.endCount;
+    }
+
+    return true;
+}
+
+// Create default recurrence object
+function createDefaultRecurrence() {
+    return {
+        type: RECURRENCE_TYPES.NONE,
+        interval: 1,
+        daysOfWeek: [],
+        monthlyMode: MONTHLY_MODES.DAY_OF_MONTH,
+        dayOfMonth: null,
+        dayOfWeek: null,
+        weekOfMonth: null,
+        customInterval: 1,
+        customUnit: 'days',
+        endType: RECURRENCE_END_TYPES.NEVER,
+        endDate: null,
+        endCount: null,
+        completedCount: 0
+    };
+}
 
 // Common timezones grouped by region
 const timezones = [
@@ -510,6 +831,64 @@ function renderScheduledChangesList(container, changes, onRemove) {
     });
 }
 
+// Render scheduled notifications list
+function renderScheduledNotificationsList(container, notifications, onRemove) {
+    if (!notifications || notifications.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    // Sort by time
+    const sorted = [...notifications].sort((a, b) => a.time - b.time);
+
+    container.innerHTML = sorted.map((notification, index) => `
+        <div class="scheduled-notification-item" data-index="${index}">
+            <div class="scheduled-notification-header">
+                <span class="scheduled-notification-time">${formatDueTime(notification.time)}</span>
+                <button type="button" class="scheduled-notification-remove" data-index="${index}">x</button>
+            </div>
+            ${notification.message ? `<div class="scheduled-notification-message">"${escapeHtml(notification.message)}"</div>` : ''}
+        </div>
+    `).join('');
+
+    // Add remove handlers
+    container.querySelectorAll('.scheduled-notification-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const idx = parseInt(e.target.dataset.index);
+            onRemove(idx);
+        });
+    });
+}
+
+// Render scheduled SMS list
+function renderScheduledSmsList(container, smsList, onRemove) {
+    if (!smsList || smsList.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    // Sort by time
+    const sorted = [...smsList].sort((a, b) => a.time - b.time);
+
+    container.innerHTML = sorted.map((sms, index) => `
+        <div class="scheduled-sms-item" data-index="${index}">
+            <div class="scheduled-sms-header">
+                <span class="scheduled-sms-time">${formatDueTime(sms.time)}</span>
+                <button type="button" class="scheduled-sms-remove" data-index="${index}">x</button>
+            </div>
+            ${sms.message ? `<div class="scheduled-sms-message">"${escapeHtml(sms.message)}"</div>` : ''}
+        </div>
+    `).join('');
+
+    // Add remove handlers
+    container.querySelectorAll('.scheduled-sms-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const idx = parseInt(e.target.dataset.index);
+            onRemove(idx);
+        });
+    });
+}
+
 // Get priority section for a priority value
 function getPrioritySection(priority) {
     const p = priority || 0;
@@ -527,6 +906,7 @@ function renderTodoItem(doc) {
     const dueTimeDisplay = todo.dueTime ? formatDueTime(todo.dueTime) : '';
     const hasNotes = todo.notes && todo.notes.trim().length > 0;
     const hasTags = todo.tags && todo.tags.length > 0;
+    const hasRecurrence = todo.recurrence && todo.recurrence.type && todo.recurrence.type !== RECURRENCE_TYPES.NONE;
     const isUrgent = (todo.priority || 0) >= 10;
     const classes = ['todo-item'];
     if (todo.completed) classes.push('completed');
@@ -540,6 +920,11 @@ function renderTodoItem(doc) {
     const showDueTime = !todo.completed;
     const showPriority = !todo.completed;
 
+    // Recurrence indicator
+    const recurrenceIndicator = hasRecurrence
+        ? `<span class="recurrence-indicator" title="${escapeHtml(formatRecurrenceRule(todo.recurrence))}">&#x1F501;</span>`
+        : '';
+
     return `
         <li class="${classes.join(' ')}"
             data-id="${doc.id}"
@@ -550,6 +935,7 @@ function renderTodoItem(doc) {
                 <span class="drag-handle">&#8942;&#8942;</span>
                 <input type="checkbox" class="todo-checkbox" ${todo.completed ? 'checked' : ''}>
                 <span class="todo-text">${escapeHtml(todo.text)}</span>
+                ${recurrenceIndicator}
                 ${hasTags ? renderTagBadges(todo.tags) : ''}
                 ${hasNotes ? '<span class="notes-indicator" title="Has notes">📝</span>' : ''}
                 ${showSnooze ? '<button class="snooze-btn" title="Snooze 1 hour">😴</button>' : ''}
@@ -971,6 +1357,9 @@ async function addTodo() {
     const tags = addFormTagInput ? addFormTagInput.getTags() : [];
     const notes = notesInput.value.trim();
 
+    // Get recurrence settings from add form
+    const recurrence = getRecurrenceFromForm('add');
+
     await todosRef.add({
         userId: currentUser.id,
         text: text,
@@ -980,7 +1369,10 @@ async function addTodo() {
         dueTime: dueTime,
         tags: tags,
         notes: notes || '',
+        recurrence: recurrence && recurrence.type !== RECURRENCE_TYPES.NONE ? recurrence : null,
         scheduledPriorityChanges: addFormScheduledChanges.length > 0 ? [...addFormScheduledChanges] : null,
+        scheduledNotifications: addFormScheduledNotifications.length > 0 ? [...addFormScheduledNotifications] : null,
+        scheduledSms: addFormScheduledSms.length > 0 ? [...addFormScheduledSms] : null,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
@@ -995,12 +1387,80 @@ async function addTodo() {
     addScheduledPriority.value = '';
     addFormScheduledChanges = [];
     renderScheduledChangesList(addScheduledList, addFormScheduledChanges, () => {});
+    // Clear notification scheduling inputs
+    if (addNotificationTimeText) addNotificationTimeText.value = '';
+    if (addNotificationTimeDatetime) addNotificationTimeDatetime.value = '';
+    if (addNotificationMessage) addNotificationMessage.value = '';
+    addFormScheduledNotifications = [];
+    renderScheduledNotificationsList(addNotificationsList, addFormScheduledNotifications, () => {});
+    // Clear SMS scheduling inputs
+    if (addSmsTimeText) addSmsTimeText.value = '';
+    if (addSmsTimeDatetime) addSmsTimeDatetime.value = '';
+    if (addSmsMessage) addSmsMessage.value = '';
+    addFormScheduledSms = [];
+    renderScheduledSmsList(addSmsList, addFormScheduledSms, () => {});
+    // Reset recurrence form
+    resetRecurrenceForm('add');
     addAdvancedOptions.classList.remove('expanded');
     todoInput.focus();
 }
 
 // Toggle todo completion
 async function toggleTodo(id, completed) {
+    // If completing a recurring todo, create the next occurrence
+    if (!completed) {
+        const doc = currentDocs.find(d => d.id === id);
+        if (doc) {
+            const todo = doc.data();
+            const recurrence = todo.recurrence;
+
+            if (recurrence && recurrence.type !== RECURRENCE_TYPES.NONE) {
+                // Check if we should create another occurrence
+                const shouldCreateNext = hasRemainingOccurrences(recurrence);
+
+                if (shouldCreateNext) {
+                    // Calculate next due date
+                    const nextDueDate = calculateNextOccurrence(todo.dueTime, recurrence);
+
+                    if (nextDueDate) {
+                        // Update completed count for afterCount end type
+                        const updatedRecurrence = { ...recurrence };
+                        updatedRecurrence.completedCount = (recurrence.completedCount || 0) + 1;
+
+                        // Check if this was the last occurrence
+                        const isLastOccurrence = recurrence.endType === RECURRENCE_END_TYPES.AFTER_COUNT &&
+                            updatedRecurrence.completedCount >= recurrence.endCount;
+
+                        if (!isLastOccurrence) {
+                            // Create a new todo with the next due date
+                            await todosRef.add({
+                                userId: currentUser.id,
+                                text: todo.text,
+                                priority: todo.priority,
+                                completed: false,
+                                deleted: false,
+                                dueTime: nextDueDate,
+                                tags: todo.tags || [],
+                                notes: todo.notes || '',
+                                recurrence: updatedRecurrence,
+                                scheduledPriorityChanges: null,
+                                scheduledNotifications: null,
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                        }
+                    }
+                }
+
+                // Remove recurrence from the completed todo (so it doesn't show the indicator)
+                await todosRef.doc(id).update({
+                    completed: true,
+                    recurrence: null
+                });
+                return;
+            }
+        }
+    }
+
     await todosRef.doc(id).update({ completed: !completed });
 }
 
@@ -1120,6 +1580,36 @@ function openDetailPanel(id) {
     scheduledTimeText.value = '';
     scheduledTimeDatetime.value = '';
     scheduledPriority.value = '';
+
+    // Populate scheduled notifications list
+    const scheduledNotifications = todo.scheduledNotifications || [];
+    renderScheduledNotificationsList(detailNotificationsList, scheduledNotifications, async (index) => {
+        // Remove the notification at index
+        const updated = scheduledNotifications.filter((_, i) => i !== index);
+        await todosRef.doc(selectedTodoId).update({
+            scheduledNotifications: updated.length > 0 ? updated : null
+        });
+    });
+
+    // Clear notification input fields
+    if (detailNotificationTimeText) detailNotificationTimeText.value = '';
+    if (detailNotificationTimeDatetime) detailNotificationTimeDatetime.value = '';
+    if (detailNotificationMessage) detailNotificationMessage.value = '';
+
+    // Populate scheduled SMS list
+    const scheduledSms = todo.scheduledSms || [];
+    renderScheduledSmsList(detailSmsList, scheduledSms, async (index) => {
+        // Remove the SMS at index
+        const updated = scheduledSms.filter((_, i) => i !== index);
+        await todosRef.doc(selectedTodoId).update({
+            scheduledSms: updated.length > 0 ? updated : null
+        });
+    });
+
+    // Clear SMS input fields
+    if (detailSmsTimeText) detailSmsTimeText.value = '';
+    if (detailSmsTimeDatetime) detailSmsTimeDatetime.value = '';
+    if (detailSmsMessage) detailSmsMessage.value = '';
 
     // Collapse advanced options by default
     advancedOptions.classList.remove('expanded');
@@ -2105,6 +2595,546 @@ authTabs.forEach(tab => {
         signupError.textContent = '';
     });
 });
+
+// ============================================
+// EMAIL SETTINGS MODAL FUNCTIONALITY
+// ============================================
+
+// Open email settings modal
+function openEmailSettingsModal() {
+    emailError.textContent = '';
+    emailSuccess.textContent = '';
+    newEmailInput.value = '';
+    loadUserEmails();
+    emailModalBackdrop.classList.add('open');
+    emailSettingsModal.classList.add('open');
+}
+
+// Close email settings modal
+function closeEmailSettingsModal() {
+    emailModalBackdrop.classList.remove('open');
+    emailSettingsModal.classList.remove('open');
+}
+
+// Load and render user's email addresses
+async function loadUserEmails() {
+    if (!currentUser) return;
+
+    try {
+        const userDoc = await usersRef.doc(currentUser.id).get();
+        const userData = userDoc.data();
+        const emails = userData.emails || [];
+        renderEmailList(emails);
+    } catch (error) {
+        console.error('Failed to load emails:', error);
+        emailError.textContent = 'Failed to load email addresses.';
+    }
+}
+
+// Render the email list
+function renderEmailList(emails) {
+    if (!emails || emails.length === 0) {
+        emailList.innerHTML = '<div class="email-empty">No email addresses added yet.</div>';
+        return;
+    }
+
+    emailList.innerHTML = emails.map((email, index) => `
+        <div class="email-item" data-index="${index}">
+            <span class="email-item-address">${escapeHtml(email)}</span>
+            <button class="email-item-remove" data-email="${escapeHtml(email)}" title="Remove">x</button>
+        </div>
+    `).join('');
+}
+
+// Add a new email address
+async function addEmail() {
+    const email = newEmailInput.value.trim().toLowerCase();
+    emailError.textContent = '';
+    emailSuccess.textContent = '';
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+        emailError.textContent = 'Please enter an email address.';
+        return;
+    }
+    if (!emailRegex.test(email)) {
+        emailError.textContent = 'Please enter a valid email address.';
+        return;
+    }
+
+    try {
+        const userDoc = await usersRef.doc(currentUser.id).get();
+        const userData = userDoc.data();
+        const emails = userData.emails || [];
+
+        if (emails.includes(email)) {
+            emailError.textContent = 'This email is already added.';
+            return;
+        }
+
+        emails.push(email);
+        await usersRef.doc(currentUser.id).update({ emails: emails });
+
+        newEmailInput.value = '';
+        emailSuccess.textContent = 'Email added successfully!';
+        renderEmailList(emails);
+
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+            emailSuccess.textContent = '';
+        }, 3000);
+    } catch (error) {
+        console.error('Failed to add email:', error);
+        emailError.textContent = 'Failed to add email. Please try again.';
+    }
+}
+
+// Remove an email address
+async function removeEmail(email) {
+    emailError.textContent = '';
+    emailSuccess.textContent = '';
+
+    try {
+        const userDoc = await usersRef.doc(currentUser.id).get();
+        const userData = userDoc.data();
+        const emails = (userData.emails || []).filter(e => e !== email);
+
+        await usersRef.doc(currentUser.id).update({ emails: emails });
+
+        emailSuccess.textContent = 'Email removed.';
+        renderEmailList(emails);
+
+        setTimeout(() => {
+            emailSuccess.textContent = '';
+        }, 3000);
+    } catch (error) {
+        console.error('Failed to remove email:', error);
+        emailError.textContent = 'Failed to remove email. Please try again.';
+    }
+}
+
+// Email settings event listeners
+emailSettingsBtn.addEventListener('click', openEmailSettingsModal);
+emailModalClose.addEventListener('click', closeEmailSettingsModal);
+emailModalBackdrop.addEventListener('click', closeEmailSettingsModal);
+addEmailBtn.addEventListener('click', addEmail);
+newEmailInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        addEmail();
+    }
+});
+emailList.addEventListener('click', (e) => {
+    if (e.target.classList.contains('email-item-remove')) {
+        const email = e.target.dataset.email;
+        if (email) removeEmail(email);
+    }
+});
+
+// ============================================
+// PHONE SETTINGS MODAL FUNCTIONALITY
+// ============================================
+
+// Open phone settings modal
+function openPhoneSettingsModal() {
+    phoneError.textContent = '';
+    phoneSuccess.textContent = '';
+    newPhoneInput.value = '';
+    loadUserPhones();
+    phoneModalBackdrop.classList.add('open');
+    phoneSettingsModal.classList.add('open');
+}
+
+// Close phone settings modal
+function closePhoneSettingsModal() {
+    phoneModalBackdrop.classList.remove('open');
+    phoneSettingsModal.classList.remove('open');
+}
+
+// Load and render user's phone numbers
+async function loadUserPhones() {
+    if (!currentUser) return;
+
+    try {
+        const userDoc = await usersRef.doc(currentUser.id).get();
+        const userData = userDoc.data();
+        const phones = userData.phoneNumbers || [];
+        renderPhoneList(phones);
+    } catch (error) {
+        console.error('Failed to load phone numbers:', error);
+        phoneError.textContent = 'Failed to load phone numbers.';
+    }
+}
+
+// Render the phone list
+function renderPhoneList(phones) {
+    if (!phones || phones.length === 0) {
+        phoneList.innerHTML = '<div class="phone-empty">No phone numbers added yet.</div>';
+        return;
+    }
+
+    phoneList.innerHTML = phones.map((phone, index) => `
+        <div class="phone-item" data-index="${index}">
+            <span class="phone-item-number">${escapeHtml(phone)}</span>
+            <button class="phone-item-remove" data-phone="${escapeHtml(phone)}" title="Remove">x</button>
+        </div>
+    `).join('');
+}
+
+// Validate phone number format
+// Accepts formats like: +1234567890, +1 234 567 8901, +44 20 7946 0958, etc.
+function isValidPhoneNumber(phone) {
+    // Remove all spaces for validation
+    const cleaned = phone.replace(/\s/g, '');
+    // Must start with + and contain only digits after that (minimum 10 digits total)
+    const phoneRegex = /^\+\d{10,15}$/;
+    return phoneRegex.test(cleaned);
+}
+
+// Add a new phone number
+async function addPhone() {
+    let phone = newPhoneInput.value.trim();
+    phoneError.textContent = '';
+    phoneSuccess.textContent = '';
+
+    if (!phone) {
+        phoneError.textContent = 'Please enter a phone number.';
+        return;
+    }
+
+    // Normalize the phone number (remove spaces)
+    phone = phone.replace(/\s/g, '');
+
+    if (!isValidPhoneNumber(phone)) {
+        phoneError.textContent = 'Please enter a valid phone number with country code (e.g. +1234567890).';
+        return;
+    }
+
+    try {
+        const userDoc = await usersRef.doc(currentUser.id).get();
+        const userData = userDoc.data();
+        const phones = userData.phoneNumbers || [];
+
+        if (phones.includes(phone)) {
+            phoneError.textContent = 'This phone number is already added.';
+            return;
+        }
+
+        phones.push(phone);
+        await usersRef.doc(currentUser.id).update({ phoneNumbers: phones });
+
+        newPhoneInput.value = '';
+        phoneSuccess.textContent = 'Phone number added successfully!';
+        renderPhoneList(phones);
+
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+            phoneSuccess.textContent = '';
+        }, 3000);
+    } catch (error) {
+        console.error('Failed to add phone number:', error);
+        phoneError.textContent = 'Failed to add phone number. Please try again.';
+    }
+}
+
+// Remove a phone number
+async function removePhone(phone) {
+    phoneError.textContent = '';
+    phoneSuccess.textContent = '';
+
+    try {
+        const userDoc = await usersRef.doc(currentUser.id).get();
+        const userData = userDoc.data();
+        const phones = (userData.phoneNumbers || []).filter(p => p !== phone);
+
+        await usersRef.doc(currentUser.id).update({ phoneNumbers: phones });
+
+        phoneSuccess.textContent = 'Phone number removed.';
+        renderPhoneList(phones);
+
+        setTimeout(() => {
+            phoneSuccess.textContent = '';
+        }, 3000);
+    } catch (error) {
+        console.error('Failed to remove phone number:', error);
+        phoneError.textContent = 'Failed to remove phone number. Please try again.';
+    }
+}
+
+// Phone settings event listeners
+phoneSettingsBtn.addEventListener('click', openPhoneSettingsModal);
+phoneModalClose.addEventListener('click', closePhoneSettingsModal);
+phoneModalBackdrop.addEventListener('click', closePhoneSettingsModal);
+addPhoneBtn.addEventListener('click', addPhone);
+newPhoneInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        addPhone();
+    }
+});
+phoneList.addEventListener('click', (e) => {
+    if (e.target.classList.contains('phone-item-remove')) {
+        const phone = e.target.dataset.phone;
+        if (phone) removePhone(phone);
+    }
+});
+
+// ============================================
+// NOTIFICATION SCHEDULING FUNCTIONALITY
+// ============================================
+
+// Add scheduled notification to detail panel todo
+async function addScheduledNotificationToTodo() {
+    if (!selectedTodoId) return;
+
+    const timeValue = detailNotificationTimeDatetime ? detailNotificationTimeDatetime.value : null;
+    const message = detailNotificationMessage ? detailNotificationMessage.value.trim() : '';
+
+    if (!timeValue) {
+        return; // Silently return if no time set
+    }
+
+    const scheduledTime = new Date(timeValue).getTime();
+
+    // Get current todo data
+    const doc = currentDocs.find(d => d.id === selectedTodoId);
+    if (!doc) return;
+
+    const todo = doc.data();
+    const existingNotifications = todo.scheduledNotifications || [];
+
+    // Add the new notification
+    const newNotification = {
+        time: scheduledTime,
+        message: message || `Reminder: ${todo.text}`,
+        sent: false
+    };
+    const updatedNotifications = [...existingNotifications, newNotification];
+
+    await todosRef.doc(selectedTodoId).update({
+        scheduledNotifications: updatedNotifications
+    });
+
+    // Clear input fields
+    if (detailNotificationTimeText) detailNotificationTimeText.value = '';
+    if (detailNotificationTimeDatetime) detailNotificationTimeDatetime.value = '';
+    if (detailNotificationMessage) detailNotificationMessage.value = '';
+}
+
+// Render add form scheduled notifications
+function renderAddFormScheduledNotifications() {
+    renderScheduledNotificationsList(addNotificationsList, addFormScheduledNotifications, (index) => {
+        addFormScheduledNotifications.splice(index, 1);
+        renderAddFormScheduledNotifications();
+    });
+}
+
+// Detail panel notification button
+if (addDetailNotificationBtn) {
+    addDetailNotificationBtn.addEventListener('click', addScheduledNotificationToTodo);
+}
+
+// Detail panel notification datetime picker - sync with text field
+if (detailNotificationTimeDatetime) {
+    detailNotificationTimeDatetime.addEventListener('change', () => {
+        if (detailNotificationTimeDatetime.value && detailNotificationTimeText) {
+            detailNotificationTimeText.value = formatDueTime(new Date(detailNotificationTimeDatetime.value).getTime());
+        }
+    });
+}
+
+// Detail panel notification text input (natural language)
+if (detailNotificationTimeText) {
+    detailNotificationTimeText.addEventListener('blur', () => {
+        const value = detailNotificationTimeText.value.trim();
+        if (value) {
+            const parsed = parseNaturalDate(value);
+            if (parsed && detailNotificationTimeDatetime) {
+                const timestamp = new Date(parsed).getTime();
+                detailNotificationTimeDatetime.value = new Date(timestamp).toISOString().slice(0, 16);
+            }
+        }
+    });
+}
+
+// Add form notification button
+if (addNotificationBtn) {
+    addNotificationBtn.addEventListener('click', () => {
+        const timeValue = addNotificationTimeDatetime ? addNotificationTimeDatetime.value : null;
+        const message = addNotificationMessage ? addNotificationMessage.value.trim() : '';
+
+        if (!timeValue) {
+            return;
+        }
+
+        const scheduledTime = new Date(timeValue).getTime();
+        const todoText = todoInput.value.trim() || 'your task';
+
+        addFormScheduledNotifications.push({
+            time: scheduledTime,
+            message: message || `Reminder: ${todoText}`,
+            sent: false
+        });
+        renderAddFormScheduledNotifications();
+
+        // Clear inputs
+        if (addNotificationTimeText) addNotificationTimeText.value = '';
+        if (addNotificationTimeDatetime) addNotificationTimeDatetime.value = '';
+        if (addNotificationMessage) addNotificationMessage.value = '';
+    });
+}
+
+// Add form notification datetime picker - sync with text field
+if (addNotificationTimeDatetime) {
+    addNotificationTimeDatetime.addEventListener('change', () => {
+        if (addNotificationTimeDatetime.value && addNotificationTimeText) {
+            addNotificationTimeText.value = formatDueTime(new Date(addNotificationTimeDatetime.value).getTime());
+        }
+    });
+}
+
+// Add form notification text input (natural language)
+if (addNotificationTimeText) {
+    addNotificationTimeText.addEventListener('blur', () => {
+        const value = addNotificationTimeText.value.trim();
+        if (value) {
+            const parsed = parseNaturalDate(value);
+            if (parsed && addNotificationTimeDatetime) {
+                const timestamp = new Date(parsed).getTime();
+                addNotificationTimeDatetime.value = new Date(timestamp).toISOString().slice(0, 16);
+            }
+        }
+    });
+}
+
+// ============================================
+// SMS SCHEDULING FUNCTIONALITY
+// ============================================
+
+// Add scheduled SMS to detail panel todo
+async function addScheduledSmsToTodo() {
+    if (!selectedTodoId) return;
+
+    const timeValue = detailSmsTimeDatetime ? detailSmsTimeDatetime.value : null;
+    const message = detailSmsMessage ? detailSmsMessage.value.trim() : '';
+
+    if (!timeValue) {
+        return; // Silently return if no time set
+    }
+
+    const scheduledTime = new Date(timeValue).getTime();
+
+    // Get current todo data
+    const doc = currentDocs.find(d => d.id === selectedTodoId);
+    if (!doc) return;
+
+    const todo = doc.data();
+    const existingSms = todo.scheduledSms || [];
+
+    // Add the new SMS
+    const newSms = {
+        time: scheduledTime,
+        message: message || `Reminder: ${todo.text}`,
+        sent: false
+    };
+    const updatedSms = [...existingSms, newSms];
+
+    await todosRef.doc(selectedTodoId).update({
+        scheduledSms: updatedSms
+    });
+
+    // Clear input fields
+    if (detailSmsTimeText) detailSmsTimeText.value = '';
+    if (detailSmsTimeDatetime) detailSmsTimeDatetime.value = '';
+    if (detailSmsMessage) detailSmsMessage.value = '';
+}
+
+// Render add form scheduled SMS
+function renderAddFormScheduledSms() {
+    renderScheduledSmsList(addSmsList, addFormScheduledSms, (index) => {
+        addFormScheduledSms.splice(index, 1);
+        renderAddFormScheduledSms();
+    });
+}
+
+// Detail panel SMS button
+if (addDetailSmsBtn) {
+    addDetailSmsBtn.addEventListener('click', addScheduledSmsToTodo);
+}
+
+// Detail panel SMS datetime picker - sync with text field
+if (detailSmsTimeDatetime) {
+    detailSmsTimeDatetime.addEventListener('change', () => {
+        if (detailSmsTimeDatetime.value && detailSmsTimeText) {
+            detailSmsTimeText.value = formatDueTime(new Date(detailSmsTimeDatetime.value).getTime());
+        }
+    });
+}
+
+// Detail panel SMS text input (natural language)
+if (detailSmsTimeText) {
+    detailSmsTimeText.addEventListener('blur', () => {
+        const value = detailSmsTimeText.value.trim();
+        if (value) {
+            const parsed = parseNaturalDate(value);
+            if (parsed && detailSmsTimeDatetime) {
+                const timestamp = new Date(parsed).getTime();
+                detailSmsTimeDatetime.value = new Date(timestamp).toISOString().slice(0, 16);
+            }
+        }
+    });
+}
+
+// Add form SMS button
+if (addSmsBtn) {
+    addSmsBtn.addEventListener('click', () => {
+        const timeValue = addSmsTimeDatetime ? addSmsTimeDatetime.value : null;
+        const message = addSmsMessage ? addSmsMessage.value.trim() : '';
+
+        if (!timeValue) {
+            return;
+        }
+
+        const scheduledTime = new Date(timeValue).getTime();
+        const todoText = todoInput.value.trim() || 'your task';
+
+        addFormScheduledSms.push({
+            time: scheduledTime,
+            message: message || `Reminder: ${todoText}`,
+            sent: false
+        });
+        renderAddFormScheduledSms();
+
+        // Clear inputs
+        if (addSmsTimeText) addSmsTimeText.value = '';
+        if (addSmsTimeDatetime) addSmsTimeDatetime.value = '';
+        if (addSmsMessage) addSmsMessage.value = '';
+    });
+}
+
+// Add form SMS datetime picker - sync with text field
+if (addSmsTimeDatetime) {
+    addSmsTimeDatetime.addEventListener('change', () => {
+        if (addSmsTimeDatetime.value && addSmsTimeText) {
+            addSmsTimeText.value = formatDueTime(new Date(addSmsTimeDatetime.value).getTime());
+        }
+    });
+}
+
+// Add form SMS text input (natural language)
+if (addSmsTimeText) {
+    addSmsTimeText.addEventListener('blur', () => {
+        const value = addSmsTimeText.value.trim();
+        if (value) {
+            const parsed = parseNaturalDate(value);
+            if (parsed && addSmsTimeDatetime) {
+                const timestamp = new Date(parsed).getTime();
+                addSmsTimeDatetime.value = new Date(timestamp).toISOString().slice(0, 16);
+            }
+        }
+    });
+}
 
 // Initialize when Firebase is ready
 initApp();

@@ -34,6 +34,49 @@
         </div>
     </div>
 
+    <!-- Email Settings Modal -->
+    <div class="modal-backdrop" id="email-modal-backdrop"></div>
+    <div class="modal" id="email-settings-modal">
+        <div class="modal-header">
+            <h2>Email Notification Settings</h2>
+            <button class="modal-close" id="email-modal-close">&times;</button>
+        </div>
+        <div class="modal-content">
+            <p class="modal-description">Add email addresses to receive notifications for scheduled reminders.</p>
+            <div class="email-list" id="email-list">
+                <!-- Email addresses will be rendered here -->
+            </div>
+            <div class="add-email-form">
+                <input type="email" id="new-email-input" placeholder="Enter email address">
+                <button id="add-email-btn" class="add-email-btn">Add Email</button>
+            </div>
+            <p class="email-error" id="email-error"></p>
+            <p class="email-success" id="email-success"></p>
+        </div>
+    </div>
+
+    <!-- Phone Settings Modal -->
+    <div class="modal-backdrop" id="phone-modal-backdrop"></div>
+    <div class="modal" id="phone-settings-modal">
+        <div class="modal-header">
+            <h2>SMS Notification Settings</h2>
+            <button class="modal-close" id="phone-modal-close">&times;</button>
+        </div>
+        <div class="modal-content">
+            <p class="modal-description">Add phone numbers to receive SMS notifications for scheduled reminders.</p>
+            <div class="phone-list" id="phone-list">
+                <!-- Phone numbers will be rendered here -->
+            </div>
+            <div class="add-phone-form">
+                <input type="tel" id="new-phone-input" placeholder="Enter phone number (e.g. +1234567890)">
+                <button id="add-phone-btn" class="add-phone-btn">Add Phone</button>
+            </div>
+            <p class="phone-hint">Enter phone number with country code (e.g. +1 for US, +44 for UK)</p>
+            <p class="phone-error" id="phone-error"></p>
+            <p class="phone-success" id="phone-success"></p>
+        </div>
+    </div>
+
     <!-- Main App (hidden until logged in) -->
     <div class="detail-backdrop" id="detail-backdrop"></div>
     <div class="app-wrapper" id="app-wrapper" style="display: none;">
@@ -52,6 +95,8 @@
                 </div>
                 <div class="user-controls">
                     <span class="user-email" id="user-email"></span>
+                    <button id="email-settings-btn" class="settings-btn" title="Email Notifications">Email Settings</button>
+                    <button id="phone-settings-btn" class="settings-btn" title="SMS Notifications">SMS Settings</button>
                     <button id="logout-btn" class="logout-btn">Logout</button>
                 </div>
             </div>
@@ -105,6 +150,91 @@
                     </button>
                     <div class="advanced-content" id="add-advanced-content">
                         <div class="detail-field">
+                            <label>Repeat</label>
+                            <div class="recurrence-section" id="add-recurrence-section">
+                                <select id="add-recurrence-type" class="recurrence-type-select">
+                                    <option value="none">Does not repeat</option>
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="monthly">Monthly</option>
+                                    <option value="yearly">Yearly</option>
+                                    <option value="custom">Custom...</option>
+                                </select>
+
+                                <!-- Weekly options -->
+                                <div class="recurrence-options weekly-options" id="add-weekly-options" style="display: none;">
+                                    <label class="recurrence-sublabel">Repeat on:</label>
+                                    <div class="weekday-selector">
+                                        <label class="weekday-btn"><input type="checkbox" value="0"><span>S</span></label>
+                                        <label class="weekday-btn"><input type="checkbox" value="1"><span>M</span></label>
+                                        <label class="weekday-btn"><input type="checkbox" value="2"><span>T</span></label>
+                                        <label class="weekday-btn"><input type="checkbox" value="3"><span>W</span></label>
+                                        <label class="weekday-btn"><input type="checkbox" value="4"><span>T</span></label>
+                                        <label class="weekday-btn"><input type="checkbox" value="5"><span>F</span></label>
+                                        <label class="weekday-btn"><input type="checkbox" value="6"><span>S</span></label>
+                                    </div>
+                                </div>
+
+                                <!-- Monthly options -->
+                                <div class="recurrence-options monthly-options" id="add-monthly-options" style="display: none;">
+                                    <select id="add-monthly-mode" class="monthly-mode-select">
+                                        <option value="dayOfMonth">On day of month</option>
+                                        <option value="dayOfWeek">On day of week</option>
+                                    </select>
+                                    <div class="monthly-day-of-month" id="add-monthly-day-of-month">
+                                        <span class="recurrence-sublabel">Day:</span>
+                                        <input type="number" id="add-monthly-day" min="1" max="31" value="1">
+                                    </div>
+                                    <div class="monthly-day-of-week" id="add-monthly-day-of-week" style="display: none;">
+                                        <select id="add-monthly-week">
+                                            <option value="1">First</option>
+                                            <option value="2">Second</option>
+                                            <option value="3">Third</option>
+                                            <option value="4">Fourth</option>
+                                            <option value="last">Last</option>
+                                        </select>
+                                        <select id="add-monthly-weekday">
+                                            <option value="0">Sunday</option>
+                                            <option value="1">Monday</option>
+                                            <option value="2">Tuesday</option>
+                                            <option value="3">Wednesday</option>
+                                            <option value="4">Thursday</option>
+                                            <option value="5">Friday</option>
+                                            <option value="6">Saturday</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Custom options -->
+                                <div class="recurrence-options custom-options" id="add-custom-options" style="display: none;">
+                                    <span class="recurrence-sublabel">Every</span>
+                                    <input type="number" id="add-custom-interval" min="1" value="1" class="custom-interval-input">
+                                    <select id="add-custom-unit" class="custom-unit-select">
+                                        <option value="days">days</option>
+                                        <option value="weeks">weeks</option>
+                                        <option value="months">months</option>
+                                    </select>
+                                </div>
+
+                                <!-- End options (shown for all except 'none') -->
+                                <div class="recurrence-end-options" id="add-end-options" style="display: none;">
+                                    <label class="recurrence-sublabel">Ends:</label>
+                                    <select id="add-end-type" class="end-type-select">
+                                        <option value="never">Never</option>
+                                        <option value="onDate">On date</option>
+                                        <option value="afterCount">After</option>
+                                    </select>
+                                    <div class="end-date-wrapper" id="add-end-date-wrapper" style="display: none;">
+                                        <input type="date" id="add-end-date">
+                                    </div>
+                                    <div class="end-count-wrapper" id="add-end-count-wrapper" style="display: none;">
+                                        <input type="number" id="add-end-count" min="1" value="10">
+                                        <span>occurrences</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="detail-field">
                             <label>Scheduled Priority Changes</label>
                             <p class="field-hint">Queue up times when this task will automatically change priority</p>
                             <div class="scheduled-changes-list" id="add-scheduled-list"></div>
@@ -118,6 +248,40 @@
                                     <label>New priority:</label>
                                     <input type="number" id="add-scheduled-priority" min="0" max="10" step="0.1" placeholder="0-10">
                                     <button type="button" id="add-scheduled-btn" class="add-scheduled-btn">+ Add</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="detail-field">
+                            <label>Email Notifications</label>
+                            <p class="field-hint">Schedule email reminders for this task (requires email setup in settings)</p>
+                            <div class="scheduled-notifications-list" id="add-notifications-list"></div>
+                            <div class="scheduled-notification-inputs">
+                                <div class="scheduled-row">
+                                    <label>When:</label>
+                                    <input type="text" id="add-notification-time-text" placeholder="e.g. tomorrow 9am">
+                                    <input type="datetime-local" id="add-notification-time-datetime">
+                                </div>
+                                <div class="scheduled-row">
+                                    <label>Message:</label>
+                                    <input type="text" id="add-notification-message" placeholder="Reminder message (optional)">
+                                    <button type="button" id="add-notification-btn" class="add-scheduled-btn">+ Add</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="detail-field">
+                            <label>SMS Notifications</label>
+                            <p class="field-hint">Schedule SMS reminders for this task (requires phone setup in settings)</p>
+                            <div class="scheduled-sms-list" id="add-sms-list"></div>
+                            <div class="scheduled-sms-inputs">
+                                <div class="scheduled-row">
+                                    <label>When:</label>
+                                    <input type="text" id="add-sms-time-text" placeholder="e.g. tomorrow 9am">
+                                    <input type="datetime-local" id="add-sms-time-datetime">
+                                </div>
+                                <div class="scheduled-row">
+                                    <label>Message:</label>
+                                    <input type="text" id="add-sms-message" placeholder="SMS message (optional)">
+                                    <button type="button" id="add-sms-btn" class="add-scheduled-btn">+ Add</button>
                                 </div>
                             </div>
                         </div>
@@ -205,6 +369,92 @@
                     </button>
                     <div class="advanced-content" id="advanced-content">
                         <div class="detail-field">
+                            <label>Repeat</label>
+                            <div class="recurrence-display" id="detail-recurrence-display">Does not repeat</div>
+                            <div class="recurrence-section" id="detail-recurrence-section">
+                                <select id="detail-recurrence-type" class="recurrence-type-select">
+                                    <option value="none">Does not repeat</option>
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="monthly">Monthly</option>
+                                    <option value="yearly">Yearly</option>
+                                    <option value="custom">Custom...</option>
+                                </select>
+
+                                <!-- Weekly options -->
+                                <div class="recurrence-options weekly-options" id="detail-weekly-options" style="display: none;">
+                                    <label class="recurrence-sublabel">Repeat on:</label>
+                                    <div class="weekday-selector">
+                                        <label class="weekday-btn"><input type="checkbox" value="0"><span>S</span></label>
+                                        <label class="weekday-btn"><input type="checkbox" value="1"><span>M</span></label>
+                                        <label class="weekday-btn"><input type="checkbox" value="2"><span>T</span></label>
+                                        <label class="weekday-btn"><input type="checkbox" value="3"><span>W</span></label>
+                                        <label class="weekday-btn"><input type="checkbox" value="4"><span>T</span></label>
+                                        <label class="weekday-btn"><input type="checkbox" value="5"><span>F</span></label>
+                                        <label class="weekday-btn"><input type="checkbox" value="6"><span>S</span></label>
+                                    </div>
+                                </div>
+
+                                <!-- Monthly options -->
+                                <div class="recurrence-options monthly-options" id="detail-monthly-options" style="display: none;">
+                                    <select id="detail-monthly-mode" class="monthly-mode-select">
+                                        <option value="dayOfMonth">On day of month</option>
+                                        <option value="dayOfWeek">On day of week</option>
+                                    </select>
+                                    <div class="monthly-day-of-month" id="detail-monthly-day-of-month">
+                                        <span class="recurrence-sublabel">Day:</span>
+                                        <input type="number" id="detail-monthly-day" min="1" max="31" value="1">
+                                    </div>
+                                    <div class="monthly-day-of-week" id="detail-monthly-day-of-week" style="display: none;">
+                                        <select id="detail-monthly-week">
+                                            <option value="1">First</option>
+                                            <option value="2">Second</option>
+                                            <option value="3">Third</option>
+                                            <option value="4">Fourth</option>
+                                            <option value="last">Last</option>
+                                        </select>
+                                        <select id="detail-monthly-weekday">
+                                            <option value="0">Sunday</option>
+                                            <option value="1">Monday</option>
+                                            <option value="2">Tuesday</option>
+                                            <option value="3">Wednesday</option>
+                                            <option value="4">Thursday</option>
+                                            <option value="5">Friday</option>
+                                            <option value="6">Saturday</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Custom options -->
+                                <div class="recurrence-options custom-options" id="detail-custom-options" style="display: none;">
+                                    <span class="recurrence-sublabel">Every</span>
+                                    <input type="number" id="detail-custom-interval" min="1" value="1" class="custom-interval-input">
+                                    <select id="detail-custom-unit" class="custom-unit-select">
+                                        <option value="days">days</option>
+                                        <option value="weeks">weeks</option>
+                                        <option value="months">months</option>
+                                    </select>
+                                </div>
+
+                                <!-- End options (shown for all except 'none') -->
+                                <div class="recurrence-end-options" id="detail-end-options" style="display: none;">
+                                    <label class="recurrence-sublabel">Ends:</label>
+                                    <select id="detail-end-type" class="end-type-select">
+                                        <option value="never">Never</option>
+                                        <option value="onDate">On date</option>
+                                        <option value="afterCount">After</option>
+                                    </select>
+                                    <div class="end-date-wrapper" id="detail-end-date-wrapper" style="display: none;">
+                                        <input type="date" id="detail-end-date">
+                                    </div>
+                                    <div class="end-count-wrapper" id="detail-end-count-wrapper" style="display: none;">
+                                        <input type="number" id="detail-end-count" min="1" value="10">
+                                        <span>occurrences</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="detail-field">
                             <label>Scheduled Priority Changes</label>
                             <p class="field-hint">Queue up times when this task will automatically change priority</p>
                             <div class="scheduled-changes-list" id="detail-scheduled-list"></div>
@@ -218,6 +468,40 @@
                                     <label>New priority:</label>
                                     <input type="number" id="scheduled-priority" min="0" max="10" step="0.1" placeholder="0-10">
                                     <button type="button" id="add-detail-scheduled-btn" class="add-scheduled-btn">+ Add</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="detail-field">
+                            <label>Email Notifications</label>
+                            <p class="field-hint">Schedule email reminders for this task (requires email setup in settings)</p>
+                            <div class="scheduled-notifications-list" id="detail-notifications-list"></div>
+                            <div class="scheduled-notification-inputs">
+                                <div class="scheduled-row">
+                                    <label>When:</label>
+                                    <input type="text" id="detail-notification-time-text" placeholder="e.g. tomorrow 9am">
+                                    <input type="datetime-local" id="detail-notification-time-datetime">
+                                </div>
+                                <div class="scheduled-row">
+                                    <label>Message:</label>
+                                    <input type="text" id="detail-notification-message" placeholder="Reminder message (optional)">
+                                    <button type="button" id="add-detail-notification-btn" class="add-scheduled-btn">+ Add</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="detail-field">
+                            <label>SMS Notifications</label>
+                            <p class="field-hint">Schedule SMS reminders for this task (requires phone setup in settings)</p>
+                            <div class="scheduled-sms-list" id="detail-sms-list"></div>
+                            <div class="scheduled-sms-inputs">
+                                <div class="scheduled-row">
+                                    <label>When:</label>
+                                    <input type="text" id="detail-sms-time-text" placeholder="e.g. tomorrow 9am">
+                                    <input type="datetime-local" id="detail-sms-time-datetime">
+                                </div>
+                                <div class="scheduled-row">
+                                    <label>Message:</label>
+                                    <input type="text" id="detail-sms-message" placeholder="SMS message (optional)">
+                                    <button type="button" id="add-detail-sms-btn" class="add-scheduled-btn">+ Add</button>
                                 </div>
                             </div>
                         </div>

@@ -126,6 +126,390 @@
     background: #ffebee;
 }
 
+/* Settings Button */
+.settings-btn {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: white;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.settings-btn:hover {
+    border-color: #4a90d9;
+    background: #f0f7ff;
+}
+
+/* Modal Styles */
+.modal-backdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.modal-backdrop.open {
+    display: block;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+    z-index: 1001;
+    width: 90%;
+    max-width: 450px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal.open {
+    display: block;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 18px;
+    color: #333;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #999;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: #333;
+}
+
+.modal-content {
+    padding: 20px;
+}
+
+.modal-description {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 16px;
+}
+
+/* Email List */
+.email-list {
+    margin-bottom: 16px;
+}
+
+.email-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: #f5f5f5;
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.email-item-address {
+    font-size: 14px;
+    color: #333;
+    word-break: break-all;
+}
+
+.email-item-remove {
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 0 4px;
+}
+
+.email-item-remove:hover {
+    color: #d32f2f;
+}
+
+.add-email-form {
+    display: flex;
+    gap: 8px;
+}
+
+.add-email-form input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.add-email-form input:focus {
+    outline: none;
+    border-color: #4a90d9;
+}
+
+.add-email-btn {
+    padding: 10px 16px;
+    background: #4a90d9;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.add-email-btn:hover {
+    background: #357abd;
+}
+
+.email-error {
+    color: #d32f2f;
+    font-size: 13px;
+    margin-top: 12px;
+    min-height: 20px;
+}
+
+.email-success {
+    color: #2e7d32;
+    font-size: 13px;
+    margin-top: 8px;
+    min-height: 20px;
+}
+
+.email-empty {
+    padding: 16px;
+    text-align: center;
+    color: #999;
+    font-size: 13px;
+    background: #fafafa;
+    border-radius: 6px;
+}
+
+/* Phone List (same style as email list) */
+.phone-list {
+    margin-bottom: 16px;
+}
+
+.phone-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: #f5f5f5;
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.phone-item-number {
+    font-size: 14px;
+    color: #333;
+    word-break: break-all;
+}
+
+.phone-item-remove {
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 0 4px;
+}
+
+.phone-item-remove:hover {
+    color: #d32f2f;
+}
+
+.add-phone-form {
+    display: flex;
+    gap: 8px;
+}
+
+.add-phone-form input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.add-phone-form input:focus {
+    outline: none;
+    border-color: #4a90d9;
+}
+
+.add-phone-btn {
+    padding: 10px 16px;
+    background: #4a90d9;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.add-phone-btn:hover {
+    background: #357abd;
+}
+
+.phone-hint {
+    color: #888;
+    font-size: 12px;
+    margin-top: 8px;
+}
+
+.phone-error {
+    color: #d32f2f;
+    font-size: 13px;
+    margin-top: 12px;
+    min-height: 20px;
+}
+
+.phone-success {
+    color: #2e7d32;
+    font-size: 13px;
+    margin-top: 8px;
+    min-height: 20px;
+}
+
+.phone-empty {
+    padding: 16px;
+    text-align: center;
+    color: #999;
+    font-size: 13px;
+    background: #fafafa;
+    border-radius: 6px;
+}
+
+/* Scheduled Notifications List (same style as scheduled changes) */
+.scheduled-notifications-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.scheduled-notification-item {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 10px;
+    background: #e3f2fd;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.scheduled-notification-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.scheduled-notification-time {
+    font-weight: 500;
+    color: #1976d2;
+}
+
+.scheduled-notification-message {
+    margin-top: 4px;
+    color: #666;
+    font-size: 12px;
+    font-style: italic;
+}
+
+.scheduled-notification-remove {
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0 4px;
+}
+
+.scheduled-notification-remove:hover {
+    color: #d32f2f;
+}
+
+.scheduled-notification-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Scheduled SMS List (same style as scheduled notifications) */
+.scheduled-sms-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.scheduled-sms-item {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 10px;
+    background: #e8f5e9;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.scheduled-sms-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.scheduled-sms-time {
+    font-weight: 500;
+    color: #388e3c;
+}
+
+.scheduled-sms-message {
+    margin-top: 4px;
+    color: #666;
+    font-size: 12px;
+    font-style: italic;
+}
+
+.scheduled-sms-remove {
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0 4px;
+}
+
+.scheduled-sms-remove:hover {
+    color: #d32f2f;
+}
+
+.scheduled-sms-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: #f5f5f5;
