@@ -2,6 +2,8 @@ const todoInput = document.getElementById('todo-input');
 const prioritySelect = document.getElementById('priority-select');
 const dueTimeInput = document.getElementById('due-time-input');
 const tagsInput = document.getElementById('tags-input');
+const tagsInputContainer = document.getElementById('tags-input-container');
+const detailTagsContainer = document.getElementById('detail-tags-container');
 const notesInput = document.getElementById('notes-input');
 const addBtn = document.getElementById('add-btn');
 const todoList = document.getElementById('todo-list');
@@ -510,6 +512,109 @@ function renderTagBadges(tags) {
     }).join('')}</span>`;
 }
 
+// Tag bubble input management
+class TagBubbleInput {
+    constructor(container, input, onChange = null) {
+        this.container = container;
+        this.input = input;
+        this.tags = [];
+        this.onChange = onChange;
+        this.setupListeners();
+    }
+
+    setupListeners() {
+        // Focus input when clicking container
+        this.container.addEventListener('click', (e) => {
+            if (e.target === this.container) {
+                this.input.focus();
+            }
+        });
+
+        // Handle input keydown
+        this.input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                this.addTagFromInput();
+            } else if (e.key === 'Backspace' && this.input.value === '' && this.tags.length > 0) {
+                this.removeTag(this.tags.length - 1);
+            }
+        });
+
+        // Handle blur - add any pending tag
+        this.input.addEventListener('blur', () => {
+            this.addTagFromInput();
+        });
+
+        // Handle remove button clicks
+        this.container.addEventListener('click', (e) => {
+            if (e.target.classList.contains('tag-remove')) {
+                const index = parseInt(e.target.dataset.index);
+                this.removeTag(index);
+            }
+        });
+    }
+
+    addTagFromInput() {
+        const value = this.input.value.trim().toLowerCase().replace(/,/g, '');
+        if (value && !this.tags.includes(value)) {
+            this.tags.push(value);
+            this.render();
+            if (this.onChange) this.onChange(this.tags);
+        }
+        this.input.value = '';
+    }
+
+    addTag(tag) {
+        const value = tag.trim().toLowerCase();
+        if (value && !this.tags.includes(value)) {
+            this.tags.push(value);
+            this.render();
+        }
+    }
+
+    removeTag(index) {
+        this.tags.splice(index, 1);
+        this.render();
+        if (this.onChange) this.onChange(this.tags);
+    }
+
+    setTags(tags) {
+        this.tags = Array.isArray(tags) ? [...tags] : [];
+        this.render();
+    }
+
+    getTags() {
+        return [...this.tags];
+    }
+
+    clear() {
+        this.tags = [];
+        this.input.value = '';
+        this.render();
+    }
+
+    render() {
+        // Remove existing bubbles
+        const existingBubbles = this.container.querySelectorAll('.tag-bubble');
+        existingBubbles.forEach(b => b.remove());
+
+        // Add new bubbles before the input
+        this.tags.forEach((tag, index) => {
+            const colors = getTagColor(tag);
+            const bubble = document.createElement('span');
+            bubble.className = 'tag-bubble';
+            bubble.style.backgroundColor = colors.bg;
+            bubble.style.color = colors.text;
+            bubble.innerHTML = `${escapeHtml(tag)}<button type="button" class="tag-remove" data-index="${index}">×</button>`;
+            this.container.insertBefore(bubble, this.input);
+        });
+    }
+}
+
+// Initialize tag inputs
+let addFormTagInput;
+let detailTagInput;
+
 // Format priority for display (remove trailing zeros)
 function formatPriority(priority) {
     const num = Number(priority);
@@ -527,7 +632,7 @@ async function addTodo() {
     if (priority > 10) priority = 10;
 
     const dueTime = parseNaturalDate(dueTimeInput.value);
-    const tags = parseTags(tagsInput.value);
+    const tags = addFormTagInput ? addFormTagInput.getTags() : [];
     const notes = notesInput.value.trim();
 
     await todosRef.add({
@@ -544,7 +649,7 @@ async function addTodo() {
     todoInput.value = '';
     prioritySelect.value = '5';
     dueTimeInput.value = '';
-    tagsInput.value = '';
+    if (addFormTagInput) addFormTagInput.clear();
     notesInput.value = '';
     todoInput.focus();
 }
@@ -647,7 +752,7 @@ function openDetailPanel(id) {
         detailDueDatetime.value = '';
     }
     detailPriorityInput.value = todo.priority || 5;
-    detailTags.value = formatTags(todo.tags);
+    if (detailTagInput) detailTagInput.setTags(todo.tags || []);
     detailNotes.value = todo.notes || '';
 
     detailPanel.classList.add('open');
@@ -1190,13 +1295,6 @@ detailPriorityInput.addEventListener('blur', async () => {
     await todosRef.doc(selectedTodoId).update({ priority: clampedPriority });
 });
 
-// Save tags on blur
-detailTags.addEventListener('blur', async () => {
-    if (!selectedTodoId) return;
-    const tags = parseTags(detailTags.value);
-    await todosRef.doc(selectedTodoId).update({ tags: tags });
-});
-
 // Deleted panel toggle
 deletedHeader.addEventListener('click', () => {
     deletedPanel.classList.toggle('expanded');
@@ -1236,6 +1334,14 @@ if ('serviceWorker' in navigator) {
 
 // Initialize timezone selector
 initTimezoneSelector();
+
+// Initialize tag bubble inputs
+addFormTagInput = new TagBubbleInput(tagsInputContainer, tagsInput);
+detailTagInput = new TagBubbleInput(detailTagsContainer, detailTags, async (tags) => {
+    if (selectedTodoId) {
+        await todosRef.doc(selectedTodoId).update({ tags: tags });
+    }
+});
 
 // Initialize when Firebase is ready
 initApp();

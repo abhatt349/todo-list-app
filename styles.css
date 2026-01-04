@@ -328,17 +328,59 @@ h1 {
     background: #357abd;
 }
 
-#tags-input {
+.tag-input-container {
     width: 100%;
-    padding: 10px 12px;
+    min-height: 42px;
+    padding: 6px 8px;
     border: 1px solid #ddd;
     border-radius: 8px;
-    font-size: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    cursor: text;
 }
 
-#tags-input:focus {
-    outline: none;
+.tag-input-container:focus-within {
     border-color: #4a90d9;
+}
+
+.tag-input-container .tag-bubble {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.tag-input-container .tag-bubble .tag-remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+    margin-left: 2px;
+    opacity: 0.6;
+}
+
+.tag-input-container .tag-bubble .tag-remove:hover {
+    opacity: 1;
+}
+
+.tag-input-container input {
+    flex: 1;
+    min-width: 80px;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    padding: 4px 0;
+}
+
+.tag-input-container input::placeholder {
+    color: #999;
 }
 
 #notes-input {
