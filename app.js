@@ -12,10 +12,15 @@ const detailPriorityInput = document.getElementById('detail-priority-input');
 const detailNotes = document.getElementById('detail-notes');
 const detailClose = document.getElementById('detail-close');
 const detailBackdrop = document.getElementById('detail-backdrop');
+const deletedPanel = document.getElementById('deleted-panel');
+const deletedHeader = document.getElementById('deleted-header');
+const deletedList = document.getElementById('deleted-list');
+const deletedCount = document.getElementById('deleted-count');
 
 let db;
 let todosRef;
 let currentDocs = [];
+let deletedDocs = [];
 let notifiedIds = new Set(); // Track which todos have already triggered notifications
 let selectedTodoId = null; // Currently selected todo for detail panel
 
@@ -165,21 +170,30 @@ function initApp() {
     db = firebase.firestore();
     todosRef = db.collection('todos');
 
-    // Listen for real-time updates
+    // Listen for real-time updates on all todos
     todosRef.onSnapshot((snapshot) => {
-        // Boost overdue items to max priority and send notifications
+        // Separate active and deleted todos
+        const activeDocs = [];
+        const deleted = [];
+
         snapshot.docs.forEach(doc => {
             const data = doc.data();
-            if (isOverdue(data)) {
-                if (data.priority < 10) {
-                    todosRef.doc(doc.id).update({ priority: 10 });
+            if (data.deleted === true) {
+                deleted.push(doc);
+            } else {
+                activeDocs.push(doc);
+                // Boost overdue items to max priority and send notifications
+                if (isOverdue(data)) {
+                    if (data.priority < 10) {
+                        todosRef.doc(doc.id).update({ priority: 10 });
+                    }
+                    sendOverdueNotification(data, doc.id);
                 }
-                sendOverdueNotification(data, doc.id);
             }
         });
 
-        // Sort: overdue first, then uncompleted (by priority desc), then completed
-        currentDocs = snapshot.docs.slice().sort((a, b) => {
+        // Sort active: overdue first, then uncompleted (by priority desc), then completed
+        currentDocs = activeDocs.sort((a, b) => {
             const aData = a.data();
             const bData = b.data();
             const aOverdue = isOverdue(aData);
@@ -198,7 +212,10 @@ function initApp() {
             // Within same status, sort by priority descending
             return (bData.priority || 0) - (aData.priority || 0);
         });
+
+        deletedDocs = deleted;
         renderTodos(currentDocs);
+        renderDeletedTodos();
     });
 
     // Re-check for overdue items every minute
@@ -391,6 +408,7 @@ async function addTodo() {
         text: text,
         priority: priority,
         completed: false,
+        deleted: false,
         dueTime: dueTime,
         notes: notes || '',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -413,9 +431,51 @@ async function toggleTodo(id, completed) {
     await todosRef.doc(id).update(updates);
 }
 
-// Delete a todo
+// Soft delete a todo (move to deleted section)
 async function deleteTodo(id) {
+    await todosRef.doc(id).update({ deleted: true, deletedAt: Date.now() });
+    // Close detail panel if this todo was selected
+    if (selectedTodoId === id) {
+        closeDetailPanel();
+    }
+}
+
+// Restore a deleted todo
+async function restoreTodo(id) {
+    await todosRef.doc(id).update({ deleted: false, deletedAt: null });
+}
+
+// Permanently delete a todo
+async function permanentlyDeleteTodo(id) {
     await todosRef.doc(id).delete();
+}
+
+// Render deleted todos
+function renderDeletedTodos() {
+    deletedCount.textContent = deletedDocs.length;
+
+    if (deletedDocs.length === 0) {
+        deletedList.innerHTML = '<li class="deleted-empty">No deleted tasks</li>';
+        return;
+    }
+
+    // Sort by deletedAt descending (most recent first)
+    const sorted = deletedDocs.slice().sort((a, b) => {
+        return (b.data().deletedAt || 0) - (a.data().deletedAt || 0);
+    });
+
+    deletedList.innerHTML = sorted.map(doc => {
+        const todo = doc.data();
+        return `
+            <li class="deleted-item" data-id="${doc.id}">
+                <span class="deleted-item-text">${escapeHtml(todo.text)}</span>
+                <div class="deleted-item-actions">
+                    <button class="restore-btn" title="Restore">↩</button>
+                    <button class="perm-delete-btn" title="Delete permanently">×</button>
+                </div>
+            </li>
+        `;
+    }).join('');
 }
 
 // Update priority for a todo
@@ -992,6 +1052,26 @@ detailPriorityInput.addEventListener('blur', async () => {
     const priority = parseFloat(detailPriorityInput.value) || 5;
     const clampedPriority = Math.max(0, Math.min(10, priority));
     await todosRef.doc(selectedTodoId).update({ priority: clampedPriority });
+});
+
+// Deleted panel toggle
+deletedHeader.addEventListener('click', () => {
+    deletedPanel.classList.toggle('expanded');
+});
+
+// Deleted list event handlers
+deletedList.addEventListener('click', (e) => {
+    const item = e.target.closest('.deleted-item');
+    if (!item) return;
+    const id = item.dataset.id;
+
+    if (e.target.classList.contains('restore-btn')) {
+        restoreTodo(id);
+    }
+
+    if (e.target.classList.contains('perm-delete-btn')) {
+        permanentlyDeleteTodo(id);
+    }
 });
 
 // Register service worker

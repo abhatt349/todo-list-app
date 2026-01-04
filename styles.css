@@ -47,6 +47,112 @@ body {
     display: none;
 }
 
+.deleted-panel {
+    width: 250px;
+    background: #f9f9f9;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    position: sticky;
+    top: 20px;
+    align-self: flex-start;
+}
+
+.deleted-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: #eee;
+    cursor: pointer;
+    user-select: none;
+}
+
+.deleted-header:hover {
+    background: #e0e0e0;
+}
+
+.deleted-header h3 {
+    font-size: 14px;
+    color: #666;
+    margin: 0;
+}
+
+.deleted-toggle {
+    font-size: 12px;
+    color: #666;
+    transition: transform 0.2s;
+}
+
+.deleted-panel.expanded .deleted-toggle {
+    transform: rotate(90deg);
+}
+
+.deleted-list {
+    list-style: none;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.deleted-panel.expanded .deleted-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.deleted-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+    color: #888;
+}
+
+.deleted-item:last-child {
+    border-bottom: none;
+}
+
+.deleted-item-text {
+    flex: 1;
+    text-decoration: line-through;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.deleted-item-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.restore-btn, .perm-delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    font-size: 14px;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.restore-btn:hover {
+    opacity: 1;
+}
+
+.perm-delete-btn:hover {
+    opacity: 1;
+    color: #d32f2f;
+}
+
+.deleted-empty {
+    padding: 16px;
+    text-align: center;
+    color: #999;
+    font-size: 13px;
+}
+
 .detail-header {
     display: flex;
     justify-content: space-between;
@@ -505,8 +611,9 @@ h1 {
         border-radius: 12px;
     }
 
-    /* Hide the side panel on mobile */
-    .detail-panel {
+    /* Hide the side panels on mobile */
+    .detail-panel,
+    .deleted-panel {
         display: none !important;
     }
 
