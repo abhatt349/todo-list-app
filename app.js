@@ -101,6 +101,10 @@ const detailPriorityToggle = document.getElementById('detail-priority-toggle');
 const detailSmsSubsection = document.getElementById('detail-sms-subsection');
 const detailSmsToggle = document.getElementById('detail-sms-toggle');
 
+// Top bar toggle elements
+const topBarToggle = document.getElementById('top-bar-toggle');
+const topBarWrapper = topBarToggle ? topBarToggle.parentElement : null;
+
 const scheduledTimeText = document.getElementById('scheduled-time-text');
 const scheduledTimeDatetime = document.getElementById('scheduled-time-datetime');
 const scheduledPriority = document.getElementById('scheduled-priority');
@@ -1205,16 +1209,39 @@ function escapeHtml(text) {
 }
 
 // Generate a consistent color for a tag based on its name
+// Uses a professional, muted color palette with good contrast
 function getTagColor(tag) {
-    // Hash the tag name to get a consistent hue
+    // Professional muted color palette
+    // Each entry: [background, text color]
+    const palette = [
+        ['#dbeafe', '#1e40af'],  // Blue
+        ['#dcfce7', '#166534'],  // Green
+        ['#fef3c7', '#92400e'],  // Amber
+        ['#fce7f3', '#9d174d'],  // Pink
+        ['#e0e7ff', '#3730a3'],  // Indigo
+        ['#d1fae5', '#065f46'],  // Emerald
+        ['#ffedd5', '#9a3412'],  // Orange
+        ['#f3e8ff', '#6b21a8'],  // Purple
+        ['#cffafe', '#155e75'],  // Cyan
+        ['#fef2f2', '#991b1b'],  // Red
+        ['#ecfdf5', '#047857'],  // Teal
+        ['#fdf4ff', '#86198f'],  // Fuchsia
+        ['#f0fdf4', '#15803d'],  // Lime (light)
+        ['#eff6ff', '#1d4ed8'],  // Sky blue
+        ['#fdf2f8', '#be185d'],  // Rose
+        ['#f5f3ff', '#5b21b6'],  // Violet
+    ];
+
+    // Hash the tag name to get a consistent index
     let hash = 0;
     for (let i = 0; i < tag.length; i++) {
         hash = tag.charCodeAt(i) + ((hash << 5) - hash);
     }
-    const hue = Math.abs(hash % 360);
+    const index = Math.abs(hash) % palette.length;
+
     return {
-        bg: `hsl(${hue}, 70%, 90%)`,
-        text: `hsl(${hue}, 70%, 30%)`
+        bg: palette[index][0],
+        text: palette[index][1]
     };
 }
 
@@ -2594,6 +2621,13 @@ addScheduledBtn.addEventListener('click', () => {
 deletedHeader.addEventListener('click', () => {
     deletedPanel.classList.toggle('expanded');
 });
+
+// Top bar settings toggle
+if (topBarToggle && topBarWrapper) {
+    topBarToggle.addEventListener('click', () => {
+        topBarWrapper.classList.toggle('expanded');
+    });
+}
 
 // Deleted list event handlers
 deletedList.addEventListener('click', (e) => {
