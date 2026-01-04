@@ -6,6 +6,7 @@ const notesInput = document.getElementById('notes-input');
 const addBtn = document.getElementById('add-btn');
 const todoList = document.getElementById('todo-list');
 const searchInput = document.getElementById('search-input');
+const timezoneSelect = document.getElementById('timezone-select');
 const detailPanel = document.getElementById('detail-panel');
 const detailTitle = document.getElementById('detail-title');
 const detailDueInput = document.getElementById('detail-due-input');
@@ -27,6 +28,53 @@ let deletedDocs = [];
 let notifiedIds = new Set(); // Track which todos have already triggered notifications
 let selectedTodoId = null; // Currently selected todo for detail panel
 let searchQuery = ''; // Current search query
+let selectedTimezone = localStorage.getItem('timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+// Common timezones grouped by region
+const timezones = [
+    { value: 'Pacific/Honolulu', label: 'Hawaii (HST)' },
+    { value: 'America/Anchorage', label: 'Alaska (AKST)' },
+    { value: 'America/Los_Angeles', label: 'Pacific (PST)' },
+    { value: 'America/Denver', label: 'Mountain (MST)' },
+    { value: 'America/Chicago', label: 'Central (CST)' },
+    { value: 'America/New_York', label: 'Eastern (EST)' },
+    { value: 'America/Sao_Paulo', label: 'São Paulo (BRT)' },
+    { value: 'Atlantic/Reykjavik', label: 'Iceland (GMT)' },
+    { value: 'Europe/London', label: 'London (GMT)' },
+    { value: 'Europe/Paris', label: 'Paris (CET)' },
+    { value: 'Europe/Berlin', label: 'Berlin (CET)' },
+    { value: 'Europe/Moscow', label: 'Moscow (MSK)' },
+    { value: 'Asia/Dubai', label: 'Dubai (GST)' },
+    { value: 'Asia/Kolkata', label: 'India (IST)' },
+    { value: 'Asia/Bangkok', label: 'Bangkok (ICT)' },
+    { value: 'Asia/Singapore', label: 'Singapore (SGT)' },
+    { value: 'Asia/Hong_Kong', label: 'Hong Kong (HKT)' },
+    { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
+    { value: 'Australia/Sydney', label: 'Sydney (AEST)' },
+    { value: 'Pacific/Auckland', label: 'Auckland (NZST)' },
+];
+
+// Initialize timezone selector
+function initTimezoneSelector() {
+    // Add user's local timezone if not in list
+    const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const hasLocalTz = timezones.some(tz => tz.value === localTz);
+
+    if (!hasLocalTz) {
+        timezones.unshift({ value: localTz, label: `${localTz} (Local)` });
+    }
+
+    // Populate dropdown
+    timezones.forEach(tz => {
+        const option = document.createElement('option');
+        option.value = tz.value;
+        option.textContent = tz.label;
+        if (tz.value === selectedTimezone) {
+            option.selected = true;
+        }
+        timezoneSelect.appendChild(option);
+    });
+}
 
 // Request notification permission on load
 if ('Notification' in window && Notification.permission === 'default') {
@@ -266,16 +314,24 @@ function formatDueTime(dueTime) {
     if (!dueTime) return '';
     const date = new Date(dueTime);
     const now = new Date();
-    const isToday = date.toDateString() === now.toDateString();
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const isTomorrow = date.toDateString() === tomorrow.toDateString();
 
-    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // Format date parts in selected timezone
+    const dateOptions = { timeZone: selectedTimezone, year: 'numeric', month: 'numeric', day: 'numeric' };
+    const timeOptions = { timeZone: selectedTimezone, hour: '2-digit', minute: '2-digit' };
 
-    if (isToday) return `Today ${timeStr}`;
-    if (isTomorrow) return `Tomorrow ${timeStr}`;
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ` ${timeStr}`;
+    const dateInTz = date.toLocaleDateString('en-US', dateOptions);
+    const nowInTz = now.toLocaleDateString('en-US', dateOptions);
+
+    // Calculate tomorrow in the selected timezone
+    const tomorrowDate = new Date(now);
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrowInTz = tomorrowDate.toLocaleDateString('en-US', dateOptions);
+
+    const timeStr = date.toLocaleTimeString([], timeOptions);
+
+    if (dateInTz === nowInTz) return `Today ${timeStr}`;
+    if (dateInTz === tomorrowInTz) return `Tomorrow ${timeStr}`;
+    return date.toLocaleDateString([], { timeZone: selectedTimezone, month: 'short', day: 'numeric' }) + ` ${timeStr}`;
 }
 
 // Get priority section for a priority value
@@ -1161,10 +1217,25 @@ deletedList.addEventListener('click', (e) => {
     }
 });
 
+// Timezone selector change
+timezoneSelect.addEventListener('change', (e) => {
+    selectedTimezone = e.target.value;
+    localStorage.setItem('timezone', selectedTimezone);
+    // Re-render to update all displayed times
+    renderTodos(currentDocs);
+    // Update detail panel if open
+    if (selectedTodoId) {
+        openDetailPanel(selectedTodoId);
+    }
+});
+
 // Register service worker
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js');
 }
+
+// Initialize timezone selector
+initTimezoneSelector();
 
 // Initialize when Firebase is ready
 initApp();

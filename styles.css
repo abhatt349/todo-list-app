@@ -239,6 +239,35 @@ body {
     gap: 8px;
 }
 
+.timezone-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.timezone-selector label {
+    font-size: 13px;
+    color: #666;
+}
+
+#timezone-select {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 13px;
+    background: white;
+    cursor: pointer;
+}
+
+#timezone-select:focus {
+    outline: none;
+    border-color: #4a90d9;
+}
+
 h1 {
     color: #333;
     margin-bottom: 20px;
