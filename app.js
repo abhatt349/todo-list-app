@@ -2307,10 +2307,25 @@ async function addScheduledPriorityChangeToTodo() {
         scheduledPriorityChange: null // Clear legacy field
     });
 
+    // Re-render the list with updated changes
+    refreshDetailScheduledList(updatedChanges);
+
     // Clear input fields
     scheduledTimeText.value = '';
     scheduledTimeDatetime.value = '';
     scheduledPriority.value = '';
+}
+
+// Helper to refresh the detail panel's scheduled changes list
+function refreshDetailScheduledList(changes) {
+    renderScheduledChangesList(detailScheduledList, changes, async (index) => {
+        const updated = changes.filter((_, i) => i !== index);
+        await todosRef.doc(selectedTodoId).update({
+            scheduledPriorityChanges: updated.length > 0 ? updated : null,
+            scheduledPriorityChange: null
+        });
+        refreshDetailScheduledList(updated);
+    });
 }
 
 // Scheduled time text input (natural language) - just parse, don't auto-save
