@@ -1135,10 +1135,40 @@ h1 {
    ============================================ */
 
 .todo-checkbox {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
     width: 20px;
     height: 20px;
+    min-width: 20px;
+    min-height: 20px;
+    border: 2px solid var(--gray-300);
+    border-radius: 4px;
+    background: white;
     cursor: pointer;
-    accent-color: var(--primary-500);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+}
+
+.todo-checkbox:hover {
+    border-color: var(--primary-400);
+}
+
+.todo-checkbox:checked {
+    background: var(--primary-500);
+    border-color: var(--primary-500);
+}
+
+.todo-checkbox:checked::after {
+    content: '';
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    margin-bottom: 2px;
 }
 
 .todo-text {
