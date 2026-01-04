@@ -13,9 +13,18 @@
     <div class="detail-backdrop" id="detail-backdrop"></div>
     <div class="app-wrapper">
         <div class="container">
-            <div class="timezone-selector">
-                <label for="timezone-select">Timezone:</label>
-                <select id="timezone-select"></select>
+            <div class="top-bar">
+                <div class="timezone-selector">
+                    <label for="timezone-select">Timezone:</label>
+                    <select id="timezone-select"></select>
+                </div>
+                <div class="backup-controls">
+                    <button id="export-btn" class="backup-btn" title="Export backup">⬇ Export</button>
+                    <label class="backup-btn" title="Import backup">
+                        ⬆ Import
+                        <input type="file" id="import-input" accept=".json" hidden>
+                    </label>
+                </div>
             </div>
 
             <h1>My Todos</h1>

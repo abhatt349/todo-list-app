@@ -11,6 +11,8 @@ const searchInput = document.getElementById('search-input');
 const timezoneSelect = document.getElementById('timezone-select');
 const tagFilterBtn = document.getElementById('tag-filter-btn');
 const tagFilterDropdown = document.getElementById('tag-filter-dropdown');
+const exportBtn = document.getElementById('export-btn');
+const importInput = document.getElementById('import-input');
 const detailPanel = document.getElementById('detail-panel');
 const detailTitle = document.getElementById('detail-title');
 const detailDueInput = document.getElementById('detail-due-input');
@@ -1177,11 +1179,97 @@ async function handleDrop(e) {
     await todosRef.doc(draggedId).update(updates);
 }
 
+// Export all todos to a JSON file
+async function exportBackup() {
+    try {
+        const snapshot = await todosRef.get();
+        const todos = [];
+        snapshot.forEach(doc => {
+            todos.push({
+                id: doc.id,
+                ...doc.data()
+            });
+        });
+
+        const backup = {
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            timezone: selectedTimezone,
+            todos: todos
+        };
+
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `todo-backup-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('Export failed:', error);
+        alert('Failed to export backup. Please try again.');
+    }
+}
+
+// Import todos from a JSON backup file
+async function importBackup(file) {
+    try {
+        const text = await file.text();
+        const backup = JSON.parse(text);
+
+        if (!backup.todos || !Array.isArray(backup.todos)) {
+            throw new Error('Invalid backup file format');
+        }
+
+        const confirmMsg = `This will import ${backup.todos.length} todos. Existing todos with the same ID will be overwritten. Continue?`;
+        if (!confirm(confirmMsg)) return;
+
+        let imported = 0;
+        for (const todo of backup.todos) {
+            const { id, ...data } = todo;
+            // Remove any fields that shouldn't be imported
+            delete data.createdAt; // Will be set fresh
+
+            if (id) {
+                // Update existing or create with specific ID
+                await todosRef.doc(id).set({
+                    ...data,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+            } else {
+                // Create new
+                await todosRef.add({
+                    ...data,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+            imported++;
+        }
+
+        alert(`Successfully imported ${imported} todos.`);
+    } catch (error) {
+        console.error('Import failed:', error);
+        alert('Failed to import backup. Please check the file format and try again.');
+    }
+}
+
 // Event listeners
 addBtn.addEventListener('click', addTodo);
 
 todoInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') addTodo();
+});
+
+// Backup/restore
+exportBtn.addEventListener('click', exportBackup);
+importInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        importBackup(file);
+        e.target.value = ''; // Reset so same file can be selected again
+    }
 });
 
 // Search functionality
