@@ -1611,6 +1611,15 @@ function openDetailPanel(id) {
     if (detailSmsTimeDatetime) detailSmsTimeDatetime.value = '';
     if (detailSmsMessage) detailSmsMessage.value = '';
 
+    // Populate recurrence settings
+    setRecurrenceForm('detail', todo.recurrence || null);
+
+    // Update recurrence display text
+    const els = getRecurrenceElements('detail');
+    if (els.recurrenceDisplay) {
+        els.recurrenceDisplay.textContent = formatRecurrenceRule(todo.recurrence);
+    }
+
     // Collapse advanced options by default
     advancedOptions.classList.remove('expanded');
 
@@ -3135,6 +3144,374 @@ if (addSmsTimeText) {
         }
     });
 }
+
+// ============================================
+// RECURRENCE UI FUNCTIONALITY
+// ============================================
+
+// Get recurrence element IDs for a prefix ('add' or 'detail')
+function getRecurrenceElements(prefix) {
+    return {
+        typeSelect: document.getElementById(`${prefix}-recurrence-type`),
+        weeklyOptions: document.getElementById(`${prefix}-weekly-options`),
+        monthlyOptions: document.getElementById(`${prefix}-monthly-options`),
+        customOptions: document.getElementById(`${prefix}-custom-options`),
+        endOptions: document.getElementById(`${prefix}-end-options`),
+        monthlyMode: document.getElementById(`${prefix}-monthly-mode`),
+        monthlyDayOfMonth: document.getElementById(`${prefix}-monthly-day-of-month`),
+        monthlyDayOfWeek: document.getElementById(`${prefix}-monthly-day-of-week`),
+        monthlyDay: document.getElementById(`${prefix}-monthly-day`),
+        monthlyWeek: document.getElementById(`${prefix}-monthly-week`),
+        monthlyWeekday: document.getElementById(`${prefix}-monthly-weekday`),
+        customInterval: document.getElementById(`${prefix}-custom-interval`),
+        customUnit: document.getElementById(`${prefix}-custom-unit`),
+        endType: document.getElementById(`${prefix}-end-type`),
+        endDateWrapper: document.getElementById(`${prefix}-end-date-wrapper`),
+        endCountWrapper: document.getElementById(`${prefix}-end-count-wrapper`),
+        endDate: document.getElementById(`${prefix}-end-date`),
+        endCount: document.getElementById(`${prefix}-end-count`),
+        recurrenceDisplay: document.getElementById(`${prefix}-recurrence-display`)
+    };
+}
+
+// Update recurrence UI visibility based on type selection
+function updateRecurrenceUI(prefix) {
+    const els = getRecurrenceElements(prefix);
+    if (!els.typeSelect) return;
+
+    const type = els.typeSelect.value;
+
+    // Hide all options
+    if (els.weeklyOptions) els.weeklyOptions.style.display = 'none';
+    if (els.monthlyOptions) els.monthlyOptions.style.display = 'none';
+    if (els.customOptions) els.customOptions.style.display = 'none';
+    if (els.endOptions) els.endOptions.style.display = 'none';
+
+    // Show relevant options
+    if (type === RECURRENCE_TYPES.WEEKLY && els.weeklyOptions) {
+        els.weeklyOptions.style.display = 'block';
+    } else if (type === RECURRENCE_TYPES.MONTHLY && els.monthlyOptions) {
+        els.monthlyOptions.style.display = 'block';
+    } else if (type === RECURRENCE_TYPES.CUSTOM && els.customOptions) {
+        els.customOptions.style.display = 'block';
+    }
+
+    // Show end options for all recurrence types except 'none'
+    if (type !== RECURRENCE_TYPES.NONE && els.endOptions) {
+        els.endOptions.style.display = 'block';
+    }
+
+    // Update recurrence display text if available
+    if (els.recurrenceDisplay) {
+        const recurrence = getRecurrenceFromForm(prefix);
+        els.recurrenceDisplay.textContent = formatRecurrenceRule(recurrence);
+    }
+}
+
+// Update monthly mode visibility
+function updateMonthlyModeUI(prefix) {
+    const els = getRecurrenceElements(prefix);
+    if (!els.monthlyMode) return;
+
+    const mode = els.monthlyMode.value;
+
+    if (els.monthlyDayOfMonth) {
+        els.monthlyDayOfMonth.style.display = mode === MONTHLY_MODES.DAY_OF_MONTH ? 'flex' : 'none';
+    }
+    if (els.monthlyDayOfWeek) {
+        els.monthlyDayOfWeek.style.display = mode === MONTHLY_MODES.DAY_OF_WEEK ? 'flex' : 'none';
+    }
+}
+
+// Update end type visibility
+function updateEndTypeUI(prefix) {
+    const els = getRecurrenceElements(prefix);
+    if (!els.endType) return;
+
+    const endType = els.endType.value;
+
+    if (els.endDateWrapper) {
+        els.endDateWrapper.style.display = endType === RECURRENCE_END_TYPES.ON_DATE ? 'flex' : 'none';
+    }
+    if (els.endCountWrapper) {
+        els.endCountWrapper.style.display = endType === RECURRENCE_END_TYPES.AFTER_COUNT ? 'flex' : 'none';
+    }
+}
+
+// Get recurrence object from form inputs
+function getRecurrenceFromForm(prefix) {
+    const els = getRecurrenceElements(prefix);
+    if (!els.typeSelect) return createDefaultRecurrence();
+
+    const type = els.typeSelect.value;
+
+    if (type === RECURRENCE_TYPES.NONE) {
+        return createDefaultRecurrence();
+    }
+
+    const recurrence = createDefaultRecurrence();
+    recurrence.type = type;
+
+    // Get weekly days
+    if (type === RECURRENCE_TYPES.WEEKLY && els.weeklyOptions) {
+        const checkboxes = els.weeklyOptions.querySelectorAll('.weekday-selector input[type="checkbox"]:checked');
+        recurrence.daysOfWeek = Array.from(checkboxes).map(cb => parseInt(cb.value));
+    }
+
+    // Get monthly settings
+    if (type === RECURRENCE_TYPES.MONTHLY && els.monthlyMode) {
+        recurrence.monthlyMode = els.monthlyMode.value;
+        if (els.monthlyMode.value === MONTHLY_MODES.DAY_OF_MONTH && els.monthlyDay) {
+            recurrence.dayOfMonth = parseInt(els.monthlyDay.value) || 1;
+        } else if (els.monthlyMode.value === MONTHLY_MODES.DAY_OF_WEEK) {
+            if (els.monthlyWeek) {
+                recurrence.weekOfMonth = els.monthlyWeek.value === 'last' ? 'last' : parseInt(els.monthlyWeek.value);
+            }
+            if (els.monthlyWeekday) {
+                recurrence.dayOfWeek = parseInt(els.monthlyWeekday.value);
+            }
+        }
+    }
+
+    // Get custom settings
+    if (type === RECURRENCE_TYPES.CUSTOM) {
+        if (els.customInterval) {
+            recurrence.customInterval = parseInt(els.customInterval.value) || 1;
+        }
+        if (els.customUnit) {
+            recurrence.customUnit = els.customUnit.value;
+        }
+    }
+
+    // Get end settings
+    if (els.endType) {
+        recurrence.endType = els.endType.value;
+        if (recurrence.endType === RECURRENCE_END_TYPES.ON_DATE && els.endDate && els.endDate.value) {
+            recurrence.endDate = new Date(els.endDate.value).getTime();
+        }
+        if (recurrence.endType === RECURRENCE_END_TYPES.AFTER_COUNT && els.endCount) {
+            recurrence.endCount = parseInt(els.endCount.value) || 10;
+        }
+    }
+
+    return recurrence;
+}
+
+// Set recurrence form from recurrence object
+function setRecurrenceForm(prefix, recurrence) {
+    const els = getRecurrenceElements(prefix);
+    if (!els.typeSelect) return;
+
+    const rec = recurrence || createDefaultRecurrence();
+
+    // Set type
+    els.typeSelect.value = rec.type || RECURRENCE_TYPES.NONE;
+
+    // Set weekly days
+    if (els.weeklyOptions) {
+        const checkboxes = els.weeklyOptions.querySelectorAll('.weekday-selector input[type="checkbox"]');
+        checkboxes.forEach(cb => {
+            const day = parseInt(cb.value);
+            cb.checked = rec.daysOfWeek && rec.daysOfWeek.includes(day);
+            // Update visual state
+            const label = cb.closest('.weekday-btn');
+            if (label) {
+                label.classList.toggle('selected', cb.checked);
+            }
+        });
+    }
+
+    // Set monthly settings
+    if (els.monthlyMode) {
+        els.monthlyMode.value = rec.monthlyMode || MONTHLY_MODES.DAY_OF_MONTH;
+    }
+    if (els.monthlyDay) {
+        els.monthlyDay.value = rec.dayOfMonth || 1;
+    }
+    if (els.monthlyWeek) {
+        els.monthlyWeek.value = rec.weekOfMonth === 'last' ? 'last' : (rec.weekOfMonth || 1);
+    }
+    if (els.monthlyWeekday) {
+        els.monthlyWeekday.value = rec.dayOfWeek || 0;
+    }
+
+    // Set custom settings
+    if (els.customInterval) {
+        els.customInterval.value = rec.customInterval || 1;
+    }
+    if (els.customUnit) {
+        els.customUnit.value = rec.customUnit || 'days';
+    }
+
+    // Set end settings
+    if (els.endType) {
+        els.endType.value = rec.endType || RECURRENCE_END_TYPES.NEVER;
+    }
+    if (els.endDate && rec.endDate) {
+        els.endDate.value = new Date(rec.endDate).toISOString().slice(0, 10);
+    } else if (els.endDate) {
+        els.endDate.value = '';
+    }
+    if (els.endCount) {
+        els.endCount.value = rec.endCount || 10;
+    }
+
+    // Update UI visibility
+    updateRecurrenceUI(prefix);
+    updateMonthlyModeUI(prefix);
+    updateEndTypeUI(prefix);
+}
+
+// Reset recurrence form to defaults
+function resetRecurrenceForm(prefix) {
+    setRecurrenceForm(prefix, createDefaultRecurrence());
+}
+
+// Setup recurrence event listeners for a form (add or detail)
+function setupRecurrenceListeners(prefix) {
+    const els = getRecurrenceElements(prefix);
+
+    // Type change
+    if (els.typeSelect) {
+        els.typeSelect.addEventListener('change', () => {
+            updateRecurrenceUI(prefix);
+            // Auto-save for detail panel
+            if (prefix === 'detail' && selectedTodoId) {
+                saveRecurrenceToTodo();
+            }
+        });
+    }
+
+    // Weekly day checkboxes
+    if (els.weeklyOptions) {
+        els.weeklyOptions.querySelectorAll('.weekday-selector input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', (e) => {
+                const label = e.target.closest('.weekday-btn');
+                if (label) {
+                    label.classList.toggle('selected', e.target.checked);
+                }
+                updateRecurrenceUI(prefix);
+                if (prefix === 'detail' && selectedTodoId) {
+                    saveRecurrenceToTodo();
+                }
+            });
+        });
+    }
+
+    // Monthly mode change
+    if (els.monthlyMode) {
+        els.monthlyMode.addEventListener('change', () => {
+            updateMonthlyModeUI(prefix);
+            updateRecurrenceUI(prefix);
+            if (prefix === 'detail' && selectedTodoId) {
+                saveRecurrenceToTodo();
+            }
+        });
+    }
+
+    // Monthly day/week changes
+    if (els.monthlyDay) {
+        els.monthlyDay.addEventListener('change', () => {
+            updateRecurrenceUI(prefix);
+            if (prefix === 'detail' && selectedTodoId) {
+                saveRecurrenceToTodo();
+            }
+        });
+    }
+    if (els.monthlyWeek) {
+        els.monthlyWeek.addEventListener('change', () => {
+            updateRecurrenceUI(prefix);
+            if (prefix === 'detail' && selectedTodoId) {
+                saveRecurrenceToTodo();
+            }
+        });
+    }
+    if (els.monthlyWeekday) {
+        els.monthlyWeekday.addEventListener('change', () => {
+            updateRecurrenceUI(prefix);
+            if (prefix === 'detail' && selectedTodoId) {
+                saveRecurrenceToTodo();
+            }
+        });
+    }
+
+    // Custom interval/unit changes
+    if (els.customInterval) {
+        els.customInterval.addEventListener('change', () => {
+            updateRecurrenceUI(prefix);
+            if (prefix === 'detail' && selectedTodoId) {
+                saveRecurrenceToTodo();
+            }
+        });
+    }
+    if (els.customUnit) {
+        els.customUnit.addEventListener('change', () => {
+            updateRecurrenceUI(prefix);
+            if (prefix === 'detail' && selectedTodoId) {
+                saveRecurrenceToTodo();
+            }
+        });
+    }
+
+    // End type change
+    if (els.endType) {
+        els.endType.addEventListener('change', () => {
+            updateEndTypeUI(prefix);
+            updateRecurrenceUI(prefix);
+            if (prefix === 'detail' && selectedTodoId) {
+                saveRecurrenceToTodo();
+            }
+        });
+    }
+
+    // End date/count changes
+    if (els.endDate) {
+        els.endDate.addEventListener('change', () => {
+            updateRecurrenceUI(prefix);
+            if (prefix === 'detail' && selectedTodoId) {
+                saveRecurrenceToTodo();
+            }
+        });
+    }
+    if (els.endCount) {
+        els.endCount.addEventListener('change', () => {
+            updateRecurrenceUI(prefix);
+            if (prefix === 'detail' && selectedTodoId) {
+                saveRecurrenceToTodo();
+            }
+        });
+    }
+}
+
+// Save recurrence settings to current todo (for detail panel)
+async function saveRecurrenceToTodo() {
+    if (!selectedTodoId) return;
+
+    const recurrence = getRecurrenceFromForm('detail');
+    const recurrenceToSave = recurrence.type !== RECURRENCE_TYPES.NONE ? recurrence : null;
+
+    await todosRef.doc(selectedTodoId).update({
+        recurrence: recurrenceToSave
+    });
+
+    // Update display
+    const els = getRecurrenceElements('detail');
+    if (els.recurrenceDisplay) {
+        els.recurrenceDisplay.textContent = formatRecurrenceRule(recurrence);
+    }
+}
+
+// Initialize recurrence UI for both forms
+function initRecurrenceUI() {
+    setupRecurrenceListeners('add');
+    setupRecurrenceListeners('detail');
+
+    // Initialize add form to defaults
+    resetRecurrenceForm('add');
+}
+
+// Initialize recurrence UI
+initRecurrenceUI();
 
 // Initialize when Firebase is ready
 initApp();
