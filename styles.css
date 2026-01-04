@@ -510,6 +510,57 @@ body {
     color: #d32f2f;
 }
 
+/* Scheduled changes list */
+.scheduled-changes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.scheduled-change-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    background: #f5f5f5;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.scheduled-change-info {
+    display: flex;
+    gap: 12px;
+}
+
+.scheduled-change-remove {
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0 4px;
+}
+
+.scheduled-change-remove:hover {
+    color: #d32f2f;
+}
+
+.add-scheduled-btn {
+    padding: 6px 12px;
+    background: #4a90d9;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.add-scheduled-btn:hover {
+    background: #357abd;
+}
+
 /* Advanced options in add form */
 .add-form-advanced {
     width: 100%;

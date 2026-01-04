@@ -28,7 +28,14 @@ const addAdvancedToggle = document.getElementById('add-advanced-toggle');
 const addScheduledTimeText = document.getElementById('add-scheduled-time-text');
 const addScheduledTimeDatetime = document.getElementById('add-scheduled-time-datetime');
 const addScheduledPriority = document.getElementById('add-scheduled-priority');
+const addScheduledBtn = document.getElementById('add-scheduled-btn');
+const addScheduledList = document.getElementById('add-scheduled-list');
+const detailScheduledList = document.getElementById('detail-scheduled-list');
+const addDetailScheduledBtn = document.getElementById('add-detail-scheduled-btn');
 const addBtn = document.getElementById('add-btn');
+
+// Track scheduled changes for add form
+let addFormScheduledChanges = [];
 const todoList = document.getElementById('todo-list');
 const searchInput = document.getElementById('search-input');
 const timezoneSelect = document.getElementById('timezone-select');
@@ -54,7 +61,6 @@ const advancedOptions = document.querySelector('.advanced-options');
 const scheduledTimeText = document.getElementById('scheduled-time-text');
 const scheduledTimeDatetime = document.getElementById('scheduled-time-datetime');
 const scheduledPriority = document.getElementById('scheduled-priority');
-const clearScheduledBtn = document.getElementById('clear-scheduled');
 const deletedPanel = document.getElementById('deleted-panel');
 const deletedHeader = document.getElementById('deleted-header');
 const deletedList = document.getElementById('deleted-list');
@@ -393,15 +399,33 @@ function startTodosListener() {
                     sendOverdueNotification(data, doc.id);
                 }
 
-                // Check for scheduled priority changes
+                // Check for scheduled priority changes (supports both array and single object for backwards compat)
+                let scheduledChanges = data.scheduledPriorityChanges || [];
+                // Handle legacy single scheduledPriorityChange
                 if (data.scheduledPriorityChange && data.scheduledPriorityChange.time) {
-                    const scheduledTime = data.scheduledPriorityChange.time;
-                    if (scheduledTime <= now) {
-                        // Time has arrived, apply the priority change
-                        const newPriority = data.scheduledPriorityChange.newPriority;
+                    scheduledChanges = [data.scheduledPriorityChange];
+                }
+
+                if (scheduledChanges.length > 0) {
+                    const pendingChanges = [];
+                    let latestPriority = null;
+
+                    scheduledChanges.forEach(change => {
+                        if (change && change.time && change.time <= now) {
+                            // This change should be applied
+                            latestPriority = change.newPriority;
+                        } else if (change && change.time) {
+                            // Keep this change for later
+                            pendingChanges.push(change);
+                        }
+                    });
+
+                    // Apply the most recent triggered priority change
+                    if (latestPriority !== null) {
                         todosRef.doc(doc.id).update({
-                            priority: newPriority,
-                            scheduledPriorityChange: null // Clear the scheduled change
+                            priority: latestPriority,
+                            scheduledPriorityChanges: pendingChanges,
+                            scheduledPriorityChange: null // Clear legacy field
                         });
                     }
                 }
@@ -455,6 +479,35 @@ function formatDueTime(dueTime) {
     if (dateInTz === nowInTz) return `Today ${timeStr}`;
     if (dateInTz === tomorrowInTz) return `Tomorrow ${timeStr}`;
     return date.toLocaleDateString([], { timeZone: selectedTimezone, month: 'short', day: 'numeric' }) + ` ${timeStr}`;
+}
+
+// Render scheduled changes list
+function renderScheduledChangesList(container, changes, onRemove) {
+    if (!changes || changes.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    // Sort by time
+    const sorted = [...changes].sort((a, b) => a.time - b.time);
+
+    container.innerHTML = sorted.map((change, index) => `
+        <div class="scheduled-change-item" data-index="${index}">
+            <div class="scheduled-change-info">
+                <span>${formatDueTime(change.time)}</span>
+                <span>→ Priority ${change.newPriority}</span>
+            </div>
+            <button type="button" class="scheduled-change-remove" data-index="${index}">×</button>
+        </div>
+    `).join('');
+
+    // Add remove handlers
+    container.querySelectorAll('.scheduled-change-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const idx = parseInt(e.target.dataset.index);
+            onRemove(idx);
+        });
+    });
 }
 
 // Get priority section for a priority value
@@ -918,15 +971,6 @@ async function addTodo() {
     const tags = addFormTagInput ? addFormTagInput.getTags() : [];
     const notes = notesInput.value.trim();
 
-    // Build scheduled priority change if set
-    let scheduledPriorityChange = null;
-    if (addScheduledTimeDatetime.value && addScheduledPriority.value !== '') {
-        scheduledPriorityChange = {
-            time: new Date(addScheduledTimeDatetime.value).getTime(),
-            newPriority: Math.max(0, Math.min(10, parseFloat(addScheduledPriority.value) || 5))
-        };
-    }
-
     await todosRef.add({
         userId: currentUser.id,
         text: text,
@@ -936,7 +980,7 @@ async function addTodo() {
         dueTime: dueTime,
         tags: tags,
         notes: notes || '',
-        scheduledPriorityChange: scheduledPriorityChange,
+        scheduledPriorityChanges: addFormScheduledChanges.length > 0 ? [...addFormScheduledChanges] : null,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
@@ -949,6 +993,8 @@ async function addTodo() {
     addScheduledTimeText.value = '';
     addScheduledTimeDatetime.value = '';
     addScheduledPriority.value = '';
+    addFormScheduledChanges = [];
+    renderScheduledChangesList(addScheduledList, addFormScheduledChanges, () => {});
     addAdvancedOptions.classList.remove('expanded');
     todoInput.focus();
 }
@@ -1054,17 +1100,26 @@ function openDetailPanel(id) {
     if (detailTagInput) detailTagInput.setTags(todo.tags || []);
     detailNotes.value = todo.notes || '';
 
-    // Populate scheduled priority change fields
+    // Populate scheduled priority changes list
+    let scheduledChanges = todo.scheduledPriorityChanges || [];
+    // Handle legacy single scheduledPriorityChange
     if (todo.scheduledPriorityChange && todo.scheduledPriorityChange.time) {
-        const scheduledDate = new Date(todo.scheduledPriorityChange.time);
-        scheduledTimeText.value = formatDueTime(todo.scheduledPriorityChange.time);
-        scheduledTimeDatetime.value = scheduledDate.toISOString().slice(0, 16);
-        scheduledPriority.value = todo.scheduledPriorityChange.newPriority;
-    } else {
-        scheduledTimeText.value = '';
-        scheduledTimeDatetime.value = '';
-        scheduledPriority.value = '';
+        scheduledChanges = [todo.scheduledPriorityChange];
     }
+
+    renderScheduledChangesList(detailScheduledList, scheduledChanges, async (index) => {
+        // Remove the change at index
+        const updated = scheduledChanges.filter((_, i) => i !== index);
+        await todosRef.doc(selectedTodoId).update({
+            scheduledPriorityChanges: updated.length > 0 ? updated : null,
+            scheduledPriorityChange: null
+        });
+    });
+
+    // Clear input fields for adding new
+    scheduledTimeText.value = '';
+    scheduledTimeDatetime.value = '';
+    scheduledPriority.value = '';
 
     // Collapse advanced options by default
     advancedOptions.classList.remove('expanded');
@@ -1796,7 +1851,8 @@ advancedToggle.addEventListener('click', () => {
 });
 
 // Save scheduled priority change - helper function
-async function saveScheduledPriorityChange() {
+// Add a scheduled priority change to an existing todo
+async function addScheduledPriorityChangeToTodo() {
     if (!selectedTodoId) return;
 
     const timeValue = scheduledTimeDatetime.value;
@@ -1810,55 +1866,80 @@ async function saveScheduledPriorityChange() {
     const scheduledTime = new Date(timeValue).getTime();
     const newPriority = Math.max(0, Math.min(10, parseFloat(priorityValue) || 5));
 
+    // Get current todo data
+    const doc = currentDocs.find(d => d.id === selectedTodoId);
+    if (!doc) return;
+
+    const todo = doc.data();
+    let existingChanges = todo.scheduledPriorityChanges || [];
+    // Handle legacy single change
+    if (todo.scheduledPriorityChange && todo.scheduledPriorityChange.time) {
+        existingChanges = [todo.scheduledPriorityChange];
+    }
+
+    // Add the new change
+    const newChange = { time: scheduledTime, newPriority: newPriority };
+    const updatedChanges = [...existingChanges, newChange];
+
     await todosRef.doc(selectedTodoId).update({
-        scheduledPriorityChange: {
-            time: scheduledTime,
-            newPriority: newPriority
-        }
+        scheduledPriorityChanges: updatedChanges,
+        scheduledPriorityChange: null // Clear legacy field
     });
+
+    // Clear input fields
+    scheduledTimeText.value = '';
+    scheduledTimeDatetime.value = '';
+    scheduledPriority.value = '';
 }
 
-// Scheduled time text input (natural language)
-scheduledTimeText.addEventListener('blur', async () => {
-    if (!selectedTodoId) return;
+// Scheduled time text input (natural language) - just parse, don't auto-save
+scheduledTimeText.addEventListener('blur', () => {
     const value = scheduledTimeText.value.trim();
     if (value) {
         const parsed = parseNaturalDate(value);
         if (parsed) {
             const timestamp = new Date(parsed).getTime();
             scheduledTimeDatetime.value = new Date(timestamp).toISOString().slice(0, 16);
-            await saveScheduledPriorityChange();
         }
     }
 });
 
-scheduledTimeText.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-        scheduledTimeText.blur();
-    }
-});
-
-// Scheduled datetime picker
-scheduledTimeDatetime.addEventListener('change', async () => {
+// Scheduled datetime picker - sync with text field
+scheduledTimeDatetime.addEventListener('change', () => {
     if (scheduledTimeDatetime.value) {
         scheduledTimeText.value = formatDueTime(new Date(scheduledTimeDatetime.value).getTime());
     }
-    await saveScheduledPriorityChange();
 });
 
-// Scheduled priority input
-scheduledPriority.addEventListener('change', saveScheduledPriorityChange);
-scheduledPriority.addEventListener('blur', saveScheduledPriorityChange);
+// Detail panel add scheduled change button
+addDetailScheduledBtn.addEventListener('click', addScheduledPriorityChangeToTodo);
 
-// Clear scheduled change button
-clearScheduledBtn.addEventListener('click', async () => {
-    if (!selectedTodoId) return;
-    await todosRef.doc(selectedTodoId).update({
-        scheduledPriorityChange: null
+// Add form - add scheduled change to list
+function renderAddFormScheduledChanges() {
+    renderScheduledChangesList(addScheduledList, addFormScheduledChanges, (index) => {
+        addFormScheduledChanges.splice(index, 1);
+        renderAddFormScheduledChanges();
     });
-    scheduledTimeText.value = '';
-    scheduledTimeDatetime.value = '';
-    scheduledPriority.value = '';
+}
+
+addScheduledBtn.addEventListener('click', () => {
+    const timeValue = addScheduledTimeDatetime.value;
+    const priorityValue = addScheduledPriority.value;
+
+    if (!timeValue || priorityValue === '') {
+        return;
+    }
+
+    const scheduledTime = new Date(timeValue).getTime();
+    const newPriority = Math.max(0, Math.min(10, parseFloat(priorityValue) || 5));
+
+    addFormScheduledChanges.push({ time: scheduledTime, newPriority: newPriority });
+    renderAddFormScheduledChanges();
+
+    // Clear inputs
+    addScheduledTimeText.value = '';
+    addScheduledTimeDatetime.value = '';
+    addScheduledPriority.value = '';
 });
 
 // Deleted panel toggle
