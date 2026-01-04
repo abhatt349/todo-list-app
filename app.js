@@ -690,7 +690,15 @@ class TagBubbleInput {
         this.input = input;
         this.tags = [];
         this.onChange = onChange;
+        this.selectedSuggestionIndex = -1;
+        this.createAutocomplete();
         this.setupListeners();
+    }
+
+    createAutocomplete() {
+        this.autocomplete = document.createElement('div');
+        this.autocomplete.className = 'tag-autocomplete';
+        this.container.appendChild(this.autocomplete);
     }
 
     setupListeners() {
@@ -703,17 +711,51 @@ class TagBubbleInput {
 
         // Handle input keydown
         this.input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ',') {
+            const suggestions = this.autocomplete.querySelectorAll('.tag-suggestion');
+
+            if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                this.addTagFromInput();
+                this.selectedSuggestionIndex = Math.min(this.selectedSuggestionIndex + 1, suggestions.length - 1);
+                this.updateSuggestionSelection();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                this.selectedSuggestionIndex = Math.max(this.selectedSuggestionIndex - 1, -1);
+                this.updateSuggestionSelection();
+            } else if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                if (this.selectedSuggestionIndex >= 0 && suggestions[this.selectedSuggestionIndex]) {
+                    this.addTag(suggestions[this.selectedSuggestionIndex].dataset.tag);
+                    this.input.value = '';
+                    this.hideAutocomplete();
+                } else {
+                    this.addTagFromInput();
+                }
+            } else if (e.key === 'Escape') {
+                this.hideAutocomplete();
             } else if (e.key === 'Backspace' && this.input.value === '' && this.tags.length > 0) {
                 this.removeTag(this.tags.length - 1);
             }
         });
 
+        // Handle input for autocomplete
+        this.input.addEventListener('input', () => {
+            this.showSuggestions();
+        });
+
         // Handle blur - add any pending tag
-        this.input.addEventListener('blur', () => {
-            this.addTagFromInput();
+        this.input.addEventListener('blur', (e) => {
+            // Delay to allow clicking on suggestions
+            setTimeout(() => {
+                this.addTagFromInput();
+                this.hideAutocomplete();
+            }, 150);
+        });
+
+        // Handle focus - show suggestions if there's text
+        this.input.addEventListener('focus', () => {
+            if (this.input.value.trim()) {
+                this.showSuggestions();
+            }
         });
 
         // Handle remove button clicks
@@ -722,6 +764,58 @@ class TagBubbleInput {
                 const index = parseInt(e.target.dataset.index);
                 this.removeTag(index);
             }
+        });
+
+        // Handle suggestion clicks
+        this.autocomplete.addEventListener('mousedown', (e) => {
+            const suggestion = e.target.closest('.tag-suggestion');
+            if (suggestion) {
+                e.preventDefault();
+                this.addTag(suggestion.dataset.tag);
+                this.input.value = '';
+                this.hideAutocomplete();
+                this.input.focus();
+            }
+        });
+    }
+
+    showSuggestions() {
+        const query = this.input.value.trim().toLowerCase();
+        if (!query) {
+            this.hideAutocomplete();
+            return;
+        }
+
+        // Get all existing tags and filter by prefix
+        const allTags = getAllTags();
+        const suggestions = allTags.filter(tag =>
+            tag.startsWith(query) && !this.tags.includes(tag)
+        );
+
+        if (suggestions.length === 0) {
+            this.hideAutocomplete();
+            return;
+        }
+
+        this.selectedSuggestionIndex = -1;
+        this.autocomplete.innerHTML = suggestions.map(tag => {
+            const colors = getTagColor(tag);
+            return `<div class="tag-suggestion" data-tag="${escapeHtml(tag)}">
+                <span class="tag-badge" style="background-color: ${colors.bg}; color: ${colors.text}">${escapeHtml(tag)}</span>
+            </div>`;
+        }).join('');
+        this.autocomplete.classList.add('open');
+    }
+
+    hideAutocomplete() {
+        this.autocomplete.classList.remove('open');
+        this.selectedSuggestionIndex = -1;
+    }
+
+    updateSuggestionSelection() {
+        const suggestions = this.autocomplete.querySelectorAll('.tag-suggestion');
+        suggestions.forEach((el, i) => {
+            el.classList.toggle('selected', i === this.selectedSuggestionIndex);
         });
     }
 
@@ -733,6 +827,7 @@ class TagBubbleInput {
             if (this.onChange) this.onChange(this.tags);
         }
         this.input.value = '';
+        this.hideAutocomplete();
     }
 
     addTag(tag) {
@@ -740,6 +835,7 @@ class TagBubbleInput {
         if (value && !this.tags.includes(value)) {
             this.tags.push(value);
             this.render();
+            if (this.onChange) this.onChange(this.tags);
         }
     }
 
@@ -762,6 +858,7 @@ class TagBubbleInput {
         this.tags = [];
         this.input.value = '';
         this.render();
+        this.hideAutocomplete();
     }
 
     render() {
