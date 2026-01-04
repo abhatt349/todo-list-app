@@ -41,6 +41,7 @@ body {
 
 .detail-panel.open {
     display: block;
+    z-index: 1000;
 }
 
 .detail-backdrop {
