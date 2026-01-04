@@ -1032,9 +1032,15 @@ function renderTodos(docs) {
     html += sections.low.map(renderTodoItem).join('');
 
     // Render completed section only if there are completed items
+    // Sort by completedAt (most recently completed first)
     if (completed.length > 0) {
+        const sortedCompleted = completed.sort((a, b) => {
+            const aTime = a.data().completedAt || 0;
+            const bTime = b.data().completedAt || 0;
+            return bTime - aTime; // Descending (most recent first)
+        });
         html += `<li class="section-header section-completed">Completed</li>`;
-        html += completed.map(renderTodoItem).join('');
+        html += sortedCompleted.map(renderTodoItem).join('');
     }
 
     todoList.innerHTML = html;
@@ -1401,6 +1407,7 @@ async function toggleTodo(id, completed) {
                 // Remove recurrence from the completed todo (so it doesn't show the indicator)
                 await todosRef.doc(id).update({
                     completed: true,
+                    completedAt: Date.now(),
                     recurrence: null
                 });
                 return;
@@ -1408,7 +1415,15 @@ async function toggleTodo(id, completed) {
         }
     }
 
-    await todosRef.doc(id).update({ completed: !completed });
+    const updateData = { completed: !completed };
+    if (!completed) {
+        // Setting to completed - add timestamp
+        updateData.completedAt = Date.now();
+    } else {
+        // Uncompleting - remove timestamp
+        updateData.completedAt = null;
+    }
+    await todosRef.doc(id).update(updateData);
 }
 
 // Soft delete a todo (move to deleted section)

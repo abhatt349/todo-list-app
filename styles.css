@@ -1180,11 +1180,11 @@ h1 {
 
 .todo-tags {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 4px;
     margin-left: auto;
-    max-width: 280px;
-    overflow: hidden;
+    max-width: 320px;
+    justify-content: flex-end;
 }
 
 .tag-badge {
