@@ -416,6 +416,104 @@ h1 {
 
 .search-container {
     margin-bottom: 16px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+#search-input {
+    flex: 1;
+    min-width: 150px;
+}
+
+.tag-filter-container {
+    position: relative;
+}
+
+.tag-filter-btn {
+    padding: 10px 14px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: white;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.tag-filter-btn:hover {
+    border-color: #4a90d9;
+}
+
+.tag-filter-btn.active {
+    border-color: #4a90d9;
+    background: #e3f2fd;
+}
+
+.tag-filter-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 180px;
+    max-height: 250px;
+    overflow-y: auto;
+    z-index: 100;
+}
+
+.tag-filter-dropdown.open {
+    display: block;
+}
+
+.tag-filter-dropdown .tag-filter-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.tag-filter-dropdown .tag-filter-item:hover {
+    background: #f5f5f5;
+}
+
+.tag-filter-dropdown .tag-filter-item input {
+    cursor: pointer;
+}
+
+.tag-filter-dropdown .tag-filter-item .tag-badge {
+    flex: 1;
+}
+
+.tag-filter-dropdown .no-tags {
+    padding: 12px;
+    color: #999;
+    font-size: 13px;
+    text-align: center;
+}
+
+.tag-filter-dropdown .clear-filter {
+    padding: 10px 12px;
+    border-top: 1px solid #eee;
+    text-align: center;
+}
+
+.tag-filter-dropdown .clear-filter button {
+    background: none;
+    border: none;
+    color: #4a90d9;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.tag-filter-dropdown .clear-filter button:hover {
+    text-decoration: underline;
 }
 
 #search-input {

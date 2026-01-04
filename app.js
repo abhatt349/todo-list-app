@@ -9,6 +9,8 @@ const addBtn = document.getElementById('add-btn');
 const todoList = document.getElementById('todo-list');
 const searchInput = document.getElementById('search-input');
 const timezoneSelect = document.getElementById('timezone-select');
+const tagFilterBtn = document.getElementById('tag-filter-btn');
+const tagFilterDropdown = document.getElementById('tag-filter-dropdown');
 const detailPanel = document.getElementById('detail-panel');
 const detailTitle = document.getElementById('detail-title');
 const detailDueInput = document.getElementById('detail-due-input');
@@ -30,6 +32,7 @@ let deletedDocs = [];
 let notifiedIds = new Set(); // Track which todos have already triggered notifications
 let selectedTodoId = null; // Currently selected todo for detail panel
 let searchQuery = ''; // Current search query
+let selectedFilterTags = []; // Tags selected for filtering
 let selectedTimezone = localStorage.getItem('timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 // Common timezones grouped by region
@@ -406,15 +409,76 @@ function renderTodoItem(doc) {
     `;
 }
 
-// Check if a todo matches the search query
+// Check if a todo matches the search query and tag filters
 function matchesSearch(doc) {
-    if (!searchQuery) return true;
     const data = doc.data();
+
+    // Check tag filter first
+    if (selectedFilterTags.length > 0) {
+        const todoTags = data.tags || [];
+        const hasMatchingTag = selectedFilterTags.some(tag => todoTags.includes(tag));
+        if (!hasMatchingTag) return false;
+    }
+
+    // Then check search query
+    if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     const text = (data.text || '').toLowerCase();
     const notes = (data.notes || '').toLowerCase();
     const tags = (data.tags || []).join(' ').toLowerCase();
     return text.includes(query) || notes.includes(query) || tags.includes(query);
+}
+
+// Get all unique tags from current todos
+function getAllTags() {
+    const tagSet = new Set();
+    currentDocs.forEach(doc => {
+        const tags = doc.data().tags || [];
+        tags.forEach(tag => tagSet.add(tag));
+    });
+    return Array.from(tagSet).sort();
+}
+
+// Render the tag filter dropdown
+function renderTagFilterDropdown() {
+    const allTags = getAllTags();
+
+    if (allTags.length === 0) {
+        tagFilterDropdown.innerHTML = '<div class="no-tags">No tags yet</div>';
+        return;
+    }
+
+    let html = allTags.map(tag => {
+        const colors = getTagColor(tag);
+        const isChecked = selectedFilterTags.includes(tag);
+        return `
+            <label class="tag-filter-item">
+                <input type="checkbox" value="${escapeHtml(tag)}" ${isChecked ? 'checked' : ''}>
+                <span class="tag-badge" style="background-color: ${colors.bg}; color: ${colors.text}">${escapeHtml(tag)}</span>
+            </label>
+        `;
+    }).join('');
+
+    if (selectedFilterTags.length > 0) {
+        html += `
+            <div class="clear-filter">
+                <button type="button" id="clear-tag-filter">Clear filter</button>
+            </div>
+        `;
+    }
+
+    tagFilterDropdown.innerHTML = html;
+}
+
+// Update tag filter button state
+function updateTagFilterButton() {
+    if (selectedFilterTags.length > 0) {
+        tagFilterBtn.classList.add('active');
+        tagFilterBtn.textContent = `Tags (${selectedFilterTags.length}) ▾`;
+    } else {
+        tagFilterBtn.classList.remove('active');
+        tagFilterBtn.textContent = 'Filter by tags ▾';
+    }
 }
 
 // Render todos to the DOM
@@ -1107,6 +1171,45 @@ todoInput.addEventListener('keypress', (e) => {
 searchInput.addEventListener('input', (e) => {
     searchQuery = e.target.value.trim();
     renderTodos(currentDocs);
+});
+
+// Tag filter functionality
+tagFilterBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    renderTagFilterDropdown();
+    tagFilterDropdown.classList.toggle('open');
+});
+
+tagFilterDropdown.addEventListener('change', (e) => {
+    if (e.target.type === 'checkbox') {
+        const tag = e.target.value;
+        if (e.target.checked) {
+            if (!selectedFilterTags.includes(tag)) {
+                selectedFilterTags.push(tag);
+            }
+        } else {
+            selectedFilterTags = selectedFilterTags.filter(t => t !== tag);
+        }
+        updateTagFilterButton();
+        renderTodos(currentDocs);
+        renderTagFilterDropdown();
+    }
+});
+
+tagFilterDropdown.addEventListener('click', (e) => {
+    if (e.target.id === 'clear-tag-filter') {
+        selectedFilterTags = [];
+        updateTagFilterButton();
+        renderTodos(currentDocs);
+        renderTagFilterDropdown();
+    }
+});
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+    if (!tagFilterBtn.contains(e.target) && !tagFilterDropdown.contains(e.target)) {
+        tagFilterDropdown.classList.remove('open');
+    }
 });
 
 todoList.addEventListener('click', (e) => {
