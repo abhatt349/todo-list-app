@@ -90,7 +90,7 @@ function initTimezoneSelector() {
         const option = document.createElement('option');
         option.value = tz.value;
         const offset = getTimezoneOffset(tz.value);
-        option.textContent = `${tz.label} (UTC${offset})`;
+        option.textContent = `(UTC${offset}) ${tz.label}`;
         if (tz.value === selectedTimezone) {
             option.selected = true;
         }
