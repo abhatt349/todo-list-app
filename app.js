@@ -1,6 +1,7 @@
 const todoInput = document.getElementById('todo-input');
 const prioritySelect = document.getElementById('priority-select');
 const dueTimeInput = document.getElementById('due-time-input');
+const tagsInput = document.getElementById('tags-input');
 const notesInput = document.getElementById('notes-input');
 const addBtn = document.getElementById('add-btn');
 const todoList = document.getElementById('todo-list');
@@ -11,6 +12,7 @@ const detailDueInput = document.getElementById('detail-due-input');
 const detailDueDatetime = document.getElementById('detail-due-datetime');
 const detailPriorityInput = document.getElementById('detail-priority-input');
 const detailNotes = document.getElementById('detail-notes');
+const detailTags = document.getElementById('detail-tags');
 const detailClose = document.getElementById('detail-close');
 const detailBackdrop = document.getElementById('detail-backdrop');
 const deletedPanel = document.getElementById('deleted-panel');
@@ -292,6 +294,7 @@ function renderTodoItem(doc) {
     const overdue = isOverdue(todo);
     const dueTimeDisplay = todo.dueTime ? formatDueTime(todo.dueTime) : '';
     const hasNotes = todo.notes && todo.notes.trim().length > 0;
+    const hasTags = todo.tags && todo.tags.length > 0;
     const isUrgent = (todo.priority || 0) >= 10;
     const classes = ['todo-item'];
     if (todo.completed) classes.push('completed');
@@ -315,6 +318,7 @@ function renderTodoItem(doc) {
                 <span class="drag-handle">&#8942;&#8942;</span>
                 <input type="checkbox" class="todo-checkbox" ${todo.completed ? 'checked' : ''}>
                 <span class="todo-text">${escapeHtml(todo.text)}</span>
+                ${hasTags ? renderTagBadges(todo.tags) : ''}
                 ${hasNotes ? '<span class="notes-indicator" title="Has notes">📝</span>' : ''}
                 ${showSnooze ? '<button class="snooze-btn" title="Snooze 1 hour">😴</button>' : ''}
                 ${showDueTime ? `<button class="due-time-btn" title="Set due time">${dueTimeDisplay || '⏰'}</button>` : ''}
@@ -332,6 +336,10 @@ function renderTodoItem(doc) {
                     <input type="number" class="inline-priority" min="0" max="10" step="0.1" value="${todo.priority || 5}">
                 </div>
                 <div class="inline-detail-field">
+                    <label>Tags</label>
+                    <input type="text" class="inline-tags" placeholder="Tags (comma separated)" value="${formatTags(todo.tags)}">
+                </div>
+                <div class="inline-detail-field">
                     <label>Notes</label>
                     <textarea class="inline-notes" placeholder="Add notes...">${escapeHtml(todo.notes || '')}</textarea>
                 </div>
@@ -347,7 +355,8 @@ function matchesSearch(doc) {
     const query = searchQuery.toLowerCase();
     const text = (data.text || '').toLowerCase();
     const notes = (data.notes || '').toLowerCase();
-    return text.includes(query) || notes.includes(query);
+    const tags = (data.tags || []).join(' ').toLowerCase();
+    return text.includes(query) || notes.includes(query) || tags.includes(query);
 }
 
 // Render todos to the DOM
@@ -408,6 +417,43 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// Generate a consistent color for a tag based on its name
+function getTagColor(tag) {
+    // Hash the tag name to get a consistent hue
+    let hash = 0;
+    for (let i = 0; i < tag.length; i++) {
+        hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash % 360);
+    return {
+        bg: `hsl(${hue}, 70%, 90%)`,
+        text: `hsl(${hue}, 70%, 30%)`
+    };
+}
+
+// Parse tags from comma-separated string
+function parseTags(tagString) {
+    if (!tagString) return [];
+    return tagString.split(',')
+        .map(t => t.trim().toLowerCase())
+        .filter(t => t.length > 0);
+}
+
+// Format tags array to comma-separated string
+function formatTags(tags) {
+    if (!tags || !Array.isArray(tags)) return '';
+    return tags.join(', ');
+}
+
+// Render tags as badges
+function renderTagBadges(tags) {
+    if (!tags || tags.length === 0) return '';
+    return `<span class="todo-tags">${tags.map(tag => {
+        const colors = getTagColor(tag);
+        return `<span class="tag-badge" style="background-color: ${colors.bg}; color: ${colors.text}">${escapeHtml(tag)}</span>`;
+    }).join('')}</span>`;
+}
+
 // Format priority for display (remove trailing zeros)
 function formatPriority(priority) {
     const num = Number(priority);
@@ -425,6 +471,7 @@ async function addTodo() {
     if (priority > 10) priority = 10;
 
     const dueTime = parseNaturalDate(dueTimeInput.value);
+    const tags = parseTags(tagsInput.value);
     const notes = notesInput.value.trim();
 
     await todosRef.add({
@@ -433,6 +480,7 @@ async function addTodo() {
         completed: false,
         deleted: false,
         dueTime: dueTime,
+        tags: tags,
         notes: notes || '',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -440,6 +488,7 @@ async function addTodo() {
     todoInput.value = '';
     prioritySelect.value = '5';
     dueTimeInput.value = '';
+    tagsInput.value = '';
     notesInput.value = '';
     todoInput.focus();
 }
@@ -542,6 +591,7 @@ function openDetailPanel(id) {
         detailDueDatetime.value = '';
     }
     detailPriorityInput.value = todo.priority || 5;
+    detailTags.value = formatTags(todo.tags);
     detailNotes.value = todo.notes || '';
 
     detailPanel.classList.add('open');
@@ -999,6 +1049,12 @@ todoList.addEventListener('blur', async (e) => {
         }
     }
 
+    // Inline tags
+    if (e.target.classList.contains('inline-tags')) {
+        const tags = parseTags(e.target.value);
+        await todosRef.doc(id).update({ tags: tags });
+    }
+
     // Inline notes
     if (e.target.classList.contains('inline-notes')) {
         await todosRef.doc(id).update({ notes: e.target.value || '' });
@@ -1076,6 +1132,13 @@ detailPriorityInput.addEventListener('blur', async () => {
     const priority = parseFloat(detailPriorityInput.value) || 5;
     const clampedPriority = Math.max(0, Math.min(10, priority));
     await todosRef.doc(selectedTodoId).update({ priority: clampedPriority });
+});
+
+// Save tags on blur
+detailTags.addEventListener('blur', async () => {
+    if (!selectedTodoId) return;
+    const tags = parseTags(detailTags.value);
+    await todosRef.doc(selectedTodoId).update({ tags: tags });
 });
 
 // Deleted panel toggle

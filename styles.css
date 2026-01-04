@@ -299,6 +299,19 @@ h1 {
     background: #357abd;
 }
 
+#tags-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+#tags-input:focus {
+    outline: none;
+    border-color: #4a90d9;
+}
+
 #notes-input {
     width: 100%;
     min-height: 60px;
@@ -313,6 +326,21 @@ h1 {
 #notes-input:focus {
     outline: none;
     border-color: #4a90d9;
+}
+
+.todo-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-left: 4px;
+}
+
+.tag-badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
 }
 
 .search-container {
