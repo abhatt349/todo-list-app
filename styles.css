@@ -4,6 +4,128 @@
     box-sizing: border-box;
 }
 
+/* Auth Screen */
+.auth-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.auth-box {
+    background: white;
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 400px;
+}
+
+.auth-box h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 24px;
+}
+
+.auth-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.auth-tab {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: #f0f0f0;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.auth-tab:hover {
+    background: #e0e0e0;
+}
+
+.auth-tab.active {
+    background: #4a90d9;
+    color: white;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.auth-form input {
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.auth-form input:focus {
+    outline: none;
+    border-color: #4a90d9;
+}
+
+.auth-form button {
+    padding: 12px;
+    background: #4a90d9;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.auth-form button:hover {
+    background: #357abd;
+}
+
+.auth-error {
+    color: #d32f2f;
+    font-size: 13px;
+    text-align: center;
+    min-height: 20px;
+}
+
+/* User Controls */
+.user-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.user-email {
+    font-size: 12px;
+    color: #666;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.logout-btn {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: white;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.logout-btn:hover {
+    border-color: #d32f2f;
+    color: #d32f2f;
+    background: #ffebee;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: #f5f5f5;
@@ -237,6 +359,155 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
+}
+
+/* Info icon and tooltip */
+.info-icon {
+    cursor: pointer;
+    color: #4a90d9;
+    font-size: 14px;
+    margin-left: 4px;
+    user-select: none;
+}
+
+.info-icon:hover {
+    color: #357abd;
+}
+
+.info-tooltip {
+    display: none;
+    background: #333;
+    color: white;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.info-tooltip.open {
+    display: block;
+}
+
+.info-tooltip-header {
+    font-weight: bold;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #4a90d9;
+}
+
+.info-tooltip-content p {
+    margin: 8px 0 4px 0;
+    color: #ccc;
+}
+
+.info-tooltip-content ul {
+    margin: 0;
+    padding-left: 16px;
+}
+
+.info-tooltip-content li {
+    margin: 2px 0;
+}
+
+/* Advanced Options */
+.advanced-options {
+    margin-top: 16px;
+    border-top: 1px solid #eee;
+    padding-top: 12px;
+}
+
+.advanced-toggle {
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 0;
+    width: 100%;
+    text-align: left;
+}
+
+.advanced-toggle:hover {
+    color: #333;
+}
+
+.toggle-arrow {
+    font-size: 10px;
+    transition: transform 0.2s;
+}
+
+.advanced-options.expanded .toggle-arrow {
+    transform: rotate(90deg);
+}
+
+.advanced-content {
+    display: none;
+    padding-top: 12px;
+}
+
+.advanced-options.expanded .advanced-content {
+    display: block;
+}
+
+.field-hint {
+    font-size: 12px;
+    color: #888;
+    margin: 4px 0 8px 0;
+}
+
+.scheduled-priority-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.scheduled-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.scheduled-row label {
+    font-size: 12px;
+    color: #666;
+    min-width: 80px;
+}
+
+.scheduled-row input[type="text"],
+.scheduled-row input[type="datetime-local"],
+.scheduled-row input[type="number"] {
+    flex: 1;
+    min-width: 100px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.scheduled-row input:focus {
+    outline: none;
+    border-color: #4a90d9;
+}
+
+.clear-scheduled-btn {
+    background: none;
+    border: 1px solid #ddd;
+    color: #666;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.clear-scheduled-btn:hover {
+    border-color: #d32f2f;
+    color: #d32f2f;
 }
 
 .top-bar {

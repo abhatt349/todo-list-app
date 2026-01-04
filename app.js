@@ -1,3 +1,20 @@
+// Auth elements
+const authContainer = document.getElementById('auth-container');
+const appWrapper = document.getElementById('app-wrapper');
+const loginForm = document.getElementById('login-form');
+const signupForm = document.getElementById('signup-form');
+const loginEmail = document.getElementById('login-email');
+const loginPassword = document.getElementById('login-password');
+const loginError = document.getElementById('login-error');
+const signupEmail = document.getElementById('signup-email');
+const signupPassword = document.getElementById('signup-password');
+const signupConfirm = document.getElementById('signup-confirm');
+const signupError = document.getElementById('signup-error');
+const authTabs = document.querySelectorAll('.auth-tab');
+const userEmailDisplay = document.getElementById('user-email');
+const logoutBtn = document.getElementById('logout-btn');
+
+// App elements
 const todoInput = document.getElementById('todo-input');
 const prioritySelect = document.getElementById('priority-select');
 const dueTimeInput = document.getElementById('due-time-input');
@@ -22,13 +39,24 @@ const detailNotes = document.getElementById('detail-notes');
 const detailTags = document.getElementById('detail-tags');
 const detailClose = document.getElementById('detail-close');
 const detailBackdrop = document.getElementById('detail-backdrop');
+const dueInfoIcon = document.getElementById('due-info-icon');
+const dueInfoTooltip = document.getElementById('due-info-tooltip');
+const advancedToggle = document.getElementById('advanced-toggle');
+const advancedOptions = document.querySelector('.advanced-options');
+const scheduledTimeText = document.getElementById('scheduled-time-text');
+const scheduledTimeDatetime = document.getElementById('scheduled-time-datetime');
+const scheduledPriority = document.getElementById('scheduled-priority');
+const clearScheduledBtn = document.getElementById('clear-scheduled');
 const deletedPanel = document.getElementById('deleted-panel');
 const deletedHeader = document.getElementById('deleted-header');
 const deletedList = document.getElementById('deleted-list');
 const deletedCount = document.getElementById('deleted-count');
 
 let db;
+let auth;
 let todosRef;
+let currentUser = null;
+let unsubscribeTodos = null;
 let currentDocs = [];
 let deletedDocs = [];
 let notifiedIds = new Set(); // Track which todos have already triggered notifications
@@ -244,10 +272,41 @@ function parseNaturalDate(input) {
 // Initialize Firebase and load todos
 function initApp() {
     db = firebase.firestore();
+    auth = firebase.auth();
     todosRef = db.collection('todos');
 
-    // Listen for real-time updates on all todos
-    todosRef.onSnapshot((snapshot) => {
+    // Listen for auth state changes
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            // User is signed in
+            currentUser = user;
+            userEmailDisplay.textContent = user.email;
+            authContainer.style.display = 'none';
+            appWrapper.style.display = 'flex';
+            startTodosListener();
+        } else {
+            // User is signed out
+            currentUser = null;
+            if (unsubscribeTodos) {
+                unsubscribeTodos();
+                unsubscribeTodos = null;
+            }
+            currentDocs = [];
+            deletedDocs = [];
+            authContainer.style.display = 'flex';
+            appWrapper.style.display = 'none';
+        }
+    });
+}
+
+// Start listening for todos for the current user
+function startTodosListener() {
+    if (unsubscribeTodos) {
+        unsubscribeTodos();
+    }
+
+    // Listen for real-time updates on user's todos
+    unsubscribeTodos = todosRef.where('userId', '==', currentUser.uid).onSnapshot((snapshot) => {
         // Separate active and deleted todos
         const activeDocs = [];
         const deleted = [];
@@ -294,17 +353,32 @@ function initApp() {
         renderDeletedTodos();
     });
 
-    // Re-check for overdue items every minute
+    // Re-check for overdue items and scheduled changes every minute
     setInterval(() => {
         if (currentDocs.length > 0) {
-            // Check for newly overdue items and send notifications
+            const now = Date.now();
             currentDocs.forEach(doc => {
                 const data = doc.data();
+
+                // Check for newly overdue items and send notifications
                 if (isOverdue(data)) {
                     if (data.priority < 10) {
                         todosRef.doc(doc.id).update({ priority: 10 });
                     }
                     sendOverdueNotification(data, doc.id);
+                }
+
+                // Check for scheduled priority changes
+                if (data.scheduledPriorityChange && data.scheduledPriorityChange.time) {
+                    const scheduledTime = data.scheduledPriorityChange.time;
+                    if (scheduledTime <= now) {
+                        // Time has arrived, apply the priority change
+                        const newPriority = data.scheduledPriorityChange.newPriority;
+                        todosRef.doc(doc.id).update({
+                            priority: newPriority,
+                            scheduledPriorityChange: null // Clear the scheduled change
+                        });
+                    }
                 }
             });
             renderTodos(currentDocs);
@@ -719,6 +793,7 @@ async function addTodo() {
     const notes = notesInput.value.trim();
 
     await todosRef.add({
+        userId: currentUser.uid,
         text: text,
         priority: priority,
         completed: false,
@@ -838,6 +913,21 @@ function openDetailPanel(id) {
     if (detailTagInput) detailTagInput.setTags(todo.tags || []);
     detailNotes.value = todo.notes || '';
 
+    // Populate scheduled priority change fields
+    if (todo.scheduledPriorityChange && todo.scheduledPriorityChange.time) {
+        const scheduledDate = new Date(todo.scheduledPriorityChange.time);
+        scheduledTimeText.value = formatDueTime(todo.scheduledPriorityChange.time);
+        scheduledTimeDatetime.value = scheduledDate.toISOString().slice(0, 16);
+        scheduledPriority.value = todo.scheduledPriorityChange.newPriority;
+    } else {
+        scheduledTimeText.value = '';
+        scheduledTimeDatetime.value = '';
+        scheduledPriority.value = '';
+    }
+
+    // Collapse advanced options by default
+    advancedOptions.classList.remove('expanded');
+
     detailPanel.classList.add('open');
     detailBackdrop.classList.add('open');
 
@@ -854,6 +944,7 @@ function openDetailPanel(id) {
 function closeDetailPanel() {
     detailPanel.classList.remove('open');
     detailBackdrop.classList.remove('open');
+    dueInfoTooltip.classList.remove('open');
     selectedTodoId = null;
     document.querySelectorAll('.todo-item').forEach(item => {
         item.classList.remove('selected');
@@ -1216,6 +1307,11 @@ async function exportBackup() {
 // Import todos from a JSON backup file
 async function importBackup(file) {
     try {
+        if (!currentUser) {
+            alert('Please log in to import todos.');
+            return;
+        }
+
         const text = await file.text();
         const backup = JSON.parse(text);
 
@@ -1223,28 +1319,21 @@ async function importBackup(file) {
             throw new Error('Invalid backup file format');
         }
 
-        const confirmMsg = `This will import ${backup.todos.length} todos. Existing todos with the same ID will be overwritten. Continue?`;
+        const confirmMsg = `This will import ${backup.todos.length} todos as new items. Continue?`;
         if (!confirm(confirmMsg)) return;
 
         let imported = 0;
         for (const todo of backup.todos) {
-            const { id, ...data } = todo;
-            // Remove any fields that shouldn't be imported
-            delete data.createdAt; // Will be set fresh
+            // Always create new documents with new IDs to avoid conflicts
+            // eslint-disable-next-line no-unused-vars
+            const { id, userId, createdAt, ...data } = todo;
 
-            if (id) {
-                // Update existing or create with specific ID
-                await todosRef.doc(id).set({
-                    ...data,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                }, { merge: true });
-            } else {
-                // Create new
-                await todosRef.add({
-                    ...data,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-            }
+            // Create new todo assigned to current user
+            await todosRef.add({
+                ...data,
+                userId: currentUser.uid,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
             imported++;
         }
 
@@ -1434,6 +1523,19 @@ todoList.addEventListener('blur', async (e) => {
 detailClose.addEventListener('click', closeDetailPanel);
 detailBackdrop.addEventListener('click', closeDetailPanel);
 
+// Due date info icon toggle
+dueInfoIcon.addEventListener('click', (e) => {
+    e.stopPropagation();
+    dueInfoTooltip.classList.toggle('open');
+});
+
+// Close tooltip when clicking elsewhere in detail panel
+detailPanel.addEventListener('click', (e) => {
+    if (!dueInfoIcon.contains(e.target) && !dueInfoTooltip.contains(e.target)) {
+        dueInfoTooltip.classList.remove('open');
+    }
+});
+
 // Save notes on blur
 detailNotes.addEventListener('blur', () => {
     if (selectedTodoId) {
@@ -1503,6 +1605,77 @@ detailPriorityInput.addEventListener('blur', async () => {
     await todosRef.doc(selectedTodoId).update({ priority: clampedPriority });
 });
 
+// Advanced options toggle
+advancedToggle.addEventListener('click', () => {
+    advancedOptions.classList.toggle('expanded');
+});
+
+// Save scheduled priority change - helper function
+async function saveScheduledPriorityChange() {
+    if (!selectedTodoId) return;
+
+    const timeValue = scheduledTimeDatetime.value;
+    const priorityValue = scheduledPriority.value;
+
+    // Both time and priority must be set
+    if (!timeValue || priorityValue === '') {
+        return;
+    }
+
+    const scheduledTime = new Date(timeValue).getTime();
+    const newPriority = Math.max(0, Math.min(10, parseFloat(priorityValue) || 5));
+
+    await todosRef.doc(selectedTodoId).update({
+        scheduledPriorityChange: {
+            time: scheduledTime,
+            newPriority: newPriority
+        }
+    });
+}
+
+// Scheduled time text input (natural language)
+scheduledTimeText.addEventListener('blur', async () => {
+    if (!selectedTodoId) return;
+    const value = scheduledTimeText.value.trim();
+    if (value) {
+        const parsed = parseNaturalDate(value);
+        if (parsed) {
+            const timestamp = new Date(parsed).getTime();
+            scheduledTimeDatetime.value = new Date(timestamp).toISOString().slice(0, 16);
+            await saveScheduledPriorityChange();
+        }
+    }
+});
+
+scheduledTimeText.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        scheduledTimeText.blur();
+    }
+});
+
+// Scheduled datetime picker
+scheduledTimeDatetime.addEventListener('change', async () => {
+    if (scheduledTimeDatetime.value) {
+        scheduledTimeText.value = formatDueTime(new Date(scheduledTimeDatetime.value).getTime());
+    }
+    await saveScheduledPriorityChange();
+});
+
+// Scheduled priority input
+scheduledPriority.addEventListener('change', saveScheduledPriorityChange);
+scheduledPriority.addEventListener('blur', saveScheduledPriorityChange);
+
+// Clear scheduled change button
+clearScheduledBtn.addEventListener('click', async () => {
+    if (!selectedTodoId) return;
+    await todosRef.doc(selectedTodoId).update({
+        scheduledPriorityChange: null
+    });
+    scheduledTimeText.value = '';
+    scheduledTimeDatetime.value = '';
+    scheduledPriority.value = '';
+});
+
 // Deleted panel toggle
 deletedHeader.addEventListener('click', () => {
     deletedPanel.classList.toggle('expanded');
@@ -1549,6 +1722,75 @@ detailTagInput = new TagBubbleInput(detailTagsContainer, detailTags, async (tags
     if (selectedTodoId) {
         await todosRef.doc(selectedTodoId).update({ tags: tags });
     }
+});
+
+// Auth event listeners
+loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    loginError.textContent = '';
+
+    const email = loginEmail.value.trim();
+    const password = loginPassword.value;
+
+    try {
+        await auth.signInWithEmailAndPassword(email, password);
+        loginForm.reset();
+    } catch (error) {
+        loginError.textContent = error.message;
+    }
+});
+
+signupForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    signupError.textContent = '';
+
+    const email = signupEmail.value.trim();
+    const password = signupPassword.value;
+    const confirm = signupConfirm.value;
+
+    if (password !== confirm) {
+        signupError.textContent = 'Passwords do not match';
+        return;
+    }
+
+    try {
+        await auth.createUserWithEmailAndPassword(email, password);
+        signupForm.reset();
+    } catch (error) {
+        signupError.textContent = error.message;
+    }
+});
+
+logoutBtn.addEventListener('click', async () => {
+    try {
+        await auth.signOut();
+    } catch (error) {
+        console.error('Logout failed:', error);
+    }
+});
+
+// Auth tab switching
+authTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        const targetTab = tab.dataset.tab;
+
+        // Update active tab
+        authTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        // Show/hide forms
+        if (targetTab === 'login') {
+            loginForm.style.display = 'block';
+            signupForm.style.display = 'none';
+        } else {
+            loginForm.style.display = 'none';
+            signupForm.style.display = 'block';
+        }
+
+        // Clear errors
+        loginError.textContent = '';
+        signupError.textContent = '';
+    });
 });
 
 // Initialize when Firebase is ready
