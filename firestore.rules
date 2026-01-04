@@ -1,15 +1,19 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users collection - allow signup and login queries
+    // Users collection - allow signup, login queries, and phone updates
     match /users/{userId} {
       allow read, create: if true;
-      // Don't allow updates or deletes to user documents
-      allow update, delete: if false;
+      // Allow updates for phone settings (phoneNumbers array field)
+      // Note: In production, you would want to restrict this to only
+      // allow updating the 'phoneNumbers' field and not password/username
+      allow update: if true;
+      allow delete: if false;
     }
 
     // Todos collection - allow all operations
     // Note: Without server-side auth, client validates userId
+    // Supports scheduledSms array field for SMS notifications
     match /todos/{todoId} {
       allow read, write: if true;
     }

@@ -14,17 +14,6 @@ const authTabs = document.querySelectorAll('.auth-tab');
 const userEmailDisplay = document.getElementById('user-email');
 const logoutBtn = document.getElementById('logout-btn');
 
-// Email settings modal elements
-const emailSettingsBtn = document.getElementById('email-settings-btn');
-const emailModalBackdrop = document.getElementById('email-modal-backdrop');
-const emailSettingsModal = document.getElementById('email-settings-modal');
-const emailModalClose = document.getElementById('email-modal-close');
-const emailList = document.getElementById('email-list');
-const newEmailInput = document.getElementById('new-email-input');
-const addEmailBtn = document.getElementById('add-email-btn');
-const emailError = document.getElementById('email-error');
-const emailSuccess = document.getElementById('email-success');
-
 // Phone settings modal elements
 const phoneSettingsBtn = document.getElementById('phone-settings-btn');
 const phoneModalBackdrop = document.getElementById('phone-modal-backdrop');
@@ -56,20 +45,6 @@ const detailScheduledList = document.getElementById('detail-scheduled-list');
 const addDetailScheduledBtn = document.getElementById('add-detail-scheduled-btn');
 const addBtn = document.getElementById('add-btn');
 
-// Email notification scheduling elements (add form)
-const addNotificationsList = document.getElementById('add-notifications-list');
-const addNotificationTimeText = document.getElementById('add-notification-time-text');
-const addNotificationTimeDatetime = document.getElementById('add-notification-time-datetime');
-const addNotificationMessage = document.getElementById('add-notification-message');
-const addNotificationBtn = document.getElementById('add-notification-btn');
-
-// Email notification scheduling elements (detail panel)
-const detailNotificationsList = document.getElementById('detail-notifications-list');
-const detailNotificationTimeText = document.getElementById('detail-notification-time-text');
-const detailNotificationTimeDatetime = document.getElementById('detail-notification-time-datetime');
-const detailNotificationMessage = document.getElementById('detail-notification-message');
-const addDetailNotificationBtn = document.getElementById('add-detail-notification-btn');
-
 // SMS notification scheduling elements (add form)
 const addSmsList = document.getElementById('add-sms-list');
 const addSmsTimeText = document.getElementById('add-sms-time-text');
@@ -86,7 +61,6 @@ const addDetailSmsBtn = document.getElementById('add-detail-sms-btn');
 
 // Track scheduled changes for add form
 let addFormScheduledChanges = [];
-let addFormScheduledNotifications = [];
 let addFormScheduledSms = [];
 const todoList = document.getElementById('todo-list');
 const searchInput = document.getElementById('search-input');
@@ -109,7 +83,7 @@ const dueInfoTooltip = document.getElementById('due-info-tooltip');
 const addDueInfoIcon = document.getElementById('add-due-info-icon');
 const addDueInfoTooltip = document.getElementById('add-due-info-tooltip');
 const advancedToggle = document.getElementById('advanced-toggle');
-const advancedOptions = document.querySelector('.advanced-options');
+const detailAdvancedOptions = document.getElementById('detail-advanced-options');
 const scheduledTimeText = document.getElementById('scheduled-time-text');
 const scheduledTimeDatetime = document.getElementById('scheduled-time-datetime');
 const scheduledPriority = document.getElementById('scheduled-priority');
@@ -831,35 +805,6 @@ function renderScheduledChangesList(container, changes, onRemove) {
     });
 }
 
-// Render scheduled notifications list
-function renderScheduledNotificationsList(container, notifications, onRemove) {
-    if (!notifications || notifications.length === 0) {
-        container.innerHTML = '';
-        return;
-    }
-
-    // Sort by time
-    const sorted = [...notifications].sort((a, b) => a.time - b.time);
-
-    container.innerHTML = sorted.map((notification, index) => `
-        <div class="scheduled-notification-item" data-index="${index}">
-            <div class="scheduled-notification-header">
-                <span class="scheduled-notification-time">${formatDueTime(notification.time)}</span>
-                <button type="button" class="scheduled-notification-remove" data-index="${index}">x</button>
-            </div>
-            ${notification.message ? `<div class="scheduled-notification-message">"${escapeHtml(notification.message)}"</div>` : ''}
-        </div>
-    `).join('');
-
-    // Add remove handlers
-    container.querySelectorAll('.scheduled-notification-remove').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const idx = parseInt(e.target.dataset.index);
-            onRemove(idx);
-        });
-    });
-}
-
 // Render scheduled SMS list
 function renderScheduledSmsList(container, smsList, onRemove) {
     if (!smsList || smsList.length === 0) {
@@ -1371,7 +1316,6 @@ async function addTodo() {
         notes: notes || '',
         recurrence: recurrence && recurrence.type !== RECURRENCE_TYPES.NONE ? recurrence : null,
         scheduledPriorityChanges: addFormScheduledChanges.length > 0 ? [...addFormScheduledChanges] : null,
-        scheduledNotifications: addFormScheduledNotifications.length > 0 ? [...addFormScheduledNotifications] : null,
         scheduledSms: addFormScheduledSms.length > 0 ? [...addFormScheduledSms] : null,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -1387,12 +1331,6 @@ async function addTodo() {
     addScheduledPriority.value = '';
     addFormScheduledChanges = [];
     renderScheduledChangesList(addScheduledList, addFormScheduledChanges, () => {});
-    // Clear notification scheduling inputs
-    if (addNotificationTimeText) addNotificationTimeText.value = '';
-    if (addNotificationTimeDatetime) addNotificationTimeDatetime.value = '';
-    if (addNotificationMessage) addNotificationMessage.value = '';
-    addFormScheduledNotifications = [];
-    renderScheduledNotificationsList(addNotificationsList, addFormScheduledNotifications, () => {});
     // Clear SMS scheduling inputs
     if (addSmsTimeText) addSmsTimeText.value = '';
     if (addSmsTimeDatetime) addSmsTimeDatetime.value = '';
@@ -1444,7 +1382,6 @@ async function toggleTodo(id, completed) {
                                 notes: todo.notes || '',
                                 recurrence: updatedRecurrence,
                                 scheduledPriorityChanges: null,
-                                scheduledNotifications: null,
                                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
                             });
                         }
@@ -1580,21 +1517,6 @@ function openDetailPanel(id) {
     scheduledTimeText.value = '';
     scheduledTimeDatetime.value = '';
     scheduledPriority.value = '';
-
-    // Populate scheduled notifications list
-    const scheduledNotifications = todo.scheduledNotifications || [];
-    renderScheduledNotificationsList(detailNotificationsList, scheduledNotifications, async (index) => {
-        // Remove the notification at index
-        const updated = scheduledNotifications.filter((_, i) => i !== index);
-        await todosRef.doc(selectedTodoId).update({
-            scheduledNotifications: updated.length > 0 ? updated : null
-        });
-    });
-
-    // Clear notification input fields
-    if (detailNotificationTimeText) detailNotificationTimeText.value = '';
-    if (detailNotificationTimeDatetime) detailNotificationTimeDatetime.value = '';
-    if (detailNotificationMessage) detailNotificationMessage.value = '';
 
     // Populate scheduled SMS list
     const scheduledSms = todo.scheduledSms || [];
@@ -2344,9 +2266,9 @@ detailPriorityInput.addEventListener('blur', async () => {
     await todosRef.doc(selectedTodoId).update({ priority: clampedPriority });
 });
 
-// Advanced options toggle
+// Advanced options toggle (detail panel)
 advancedToggle.addEventListener('click', () => {
-    advancedOptions.classList.toggle('expanded');
+    detailAdvancedOptions.classList.toggle('expanded');
 });
 
 // Save scheduled priority change - helper function
@@ -2606,142 +2528,6 @@ authTabs.forEach(tab => {
 });
 
 // ============================================
-// EMAIL SETTINGS MODAL FUNCTIONALITY
-// ============================================
-
-// Open email settings modal
-function openEmailSettingsModal() {
-    emailError.textContent = '';
-    emailSuccess.textContent = '';
-    newEmailInput.value = '';
-    loadUserEmails();
-    emailModalBackdrop.classList.add('open');
-    emailSettingsModal.classList.add('open');
-}
-
-// Close email settings modal
-function closeEmailSettingsModal() {
-    emailModalBackdrop.classList.remove('open');
-    emailSettingsModal.classList.remove('open');
-}
-
-// Load and render user's email addresses
-async function loadUserEmails() {
-    if (!currentUser) return;
-
-    try {
-        const userDoc = await usersRef.doc(currentUser.id).get();
-        const userData = userDoc.data();
-        const emails = userData.emails || [];
-        renderEmailList(emails);
-    } catch (error) {
-        console.error('Failed to load emails:', error);
-        emailError.textContent = 'Failed to load email addresses.';
-    }
-}
-
-// Render the email list
-function renderEmailList(emails) {
-    if (!emails || emails.length === 0) {
-        emailList.innerHTML = '<div class="email-empty">No email addresses added yet.</div>';
-        return;
-    }
-
-    emailList.innerHTML = emails.map((email, index) => `
-        <div class="email-item" data-index="${index}">
-            <span class="email-item-address">${escapeHtml(email)}</span>
-            <button class="email-item-remove" data-email="${escapeHtml(email)}" title="Remove">x</button>
-        </div>
-    `).join('');
-}
-
-// Add a new email address
-async function addEmail() {
-    const email = newEmailInput.value.trim().toLowerCase();
-    emailError.textContent = '';
-    emailSuccess.textContent = '';
-
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) {
-        emailError.textContent = 'Please enter an email address.';
-        return;
-    }
-    if (!emailRegex.test(email)) {
-        emailError.textContent = 'Please enter a valid email address.';
-        return;
-    }
-
-    try {
-        const userDoc = await usersRef.doc(currentUser.id).get();
-        const userData = userDoc.data();
-        const emails = userData.emails || [];
-
-        if (emails.includes(email)) {
-            emailError.textContent = 'This email is already added.';
-            return;
-        }
-
-        emails.push(email);
-        await usersRef.doc(currentUser.id).update({ emails: emails });
-
-        newEmailInput.value = '';
-        emailSuccess.textContent = 'Email added successfully!';
-        renderEmailList(emails);
-
-        // Clear success message after 3 seconds
-        setTimeout(() => {
-            emailSuccess.textContent = '';
-        }, 3000);
-    } catch (error) {
-        console.error('Failed to add email:', error);
-        emailError.textContent = 'Failed to add email. Please try again.';
-    }
-}
-
-// Remove an email address
-async function removeEmail(email) {
-    emailError.textContent = '';
-    emailSuccess.textContent = '';
-
-    try {
-        const userDoc = await usersRef.doc(currentUser.id).get();
-        const userData = userDoc.data();
-        const emails = (userData.emails || []).filter(e => e !== email);
-
-        await usersRef.doc(currentUser.id).update({ emails: emails });
-
-        emailSuccess.textContent = 'Email removed.';
-        renderEmailList(emails);
-
-        setTimeout(() => {
-            emailSuccess.textContent = '';
-        }, 3000);
-    } catch (error) {
-        console.error('Failed to remove email:', error);
-        emailError.textContent = 'Failed to remove email. Please try again.';
-    }
-}
-
-// Email settings event listeners
-emailSettingsBtn.addEventListener('click', openEmailSettingsModal);
-emailModalClose.addEventListener('click', closeEmailSettingsModal);
-emailModalBackdrop.addEventListener('click', closeEmailSettingsModal);
-addEmailBtn.addEventListener('click', addEmail);
-newEmailInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        addEmail();
-    }
-});
-emailList.addEventListener('click', (e) => {
-    if (e.target.classList.contains('email-item-remove')) {
-        const email = e.target.dataset.email;
-        if (email) removeEmail(email);
-    }
-});
-
-// ============================================
 // PHONE SETTINGS MODAL FUNCTIONALITY
 // ============================================
 
@@ -2888,134 +2674,6 @@ phoneList.addEventListener('click', (e) => {
         if (phone) removePhone(phone);
     }
 });
-
-// ============================================
-// NOTIFICATION SCHEDULING FUNCTIONALITY
-// ============================================
-
-// Add scheduled notification to detail panel todo
-async function addScheduledNotificationToTodo() {
-    if (!selectedTodoId) return;
-
-    const timeValue = detailNotificationTimeDatetime ? detailNotificationTimeDatetime.value : null;
-    const message = detailNotificationMessage ? detailNotificationMessage.value.trim() : '';
-
-    if (!timeValue) {
-        return; // Silently return if no time set
-    }
-
-    const scheduledTime = new Date(timeValue).getTime();
-
-    // Get current todo data
-    const doc = currentDocs.find(d => d.id === selectedTodoId);
-    if (!doc) return;
-
-    const todo = doc.data();
-    const existingNotifications = todo.scheduledNotifications || [];
-
-    // Add the new notification
-    const newNotification = {
-        time: scheduledTime,
-        message: message || `Reminder: ${todo.text}`,
-        sent: false
-    };
-    const updatedNotifications = [...existingNotifications, newNotification];
-
-    await todosRef.doc(selectedTodoId).update({
-        scheduledNotifications: updatedNotifications
-    });
-
-    // Clear input fields
-    if (detailNotificationTimeText) detailNotificationTimeText.value = '';
-    if (detailNotificationTimeDatetime) detailNotificationTimeDatetime.value = '';
-    if (detailNotificationMessage) detailNotificationMessage.value = '';
-}
-
-// Render add form scheduled notifications
-function renderAddFormScheduledNotifications() {
-    renderScheduledNotificationsList(addNotificationsList, addFormScheduledNotifications, (index) => {
-        addFormScheduledNotifications.splice(index, 1);
-        renderAddFormScheduledNotifications();
-    });
-}
-
-// Detail panel notification button
-if (addDetailNotificationBtn) {
-    addDetailNotificationBtn.addEventListener('click', addScheduledNotificationToTodo);
-}
-
-// Detail panel notification datetime picker - sync with text field
-if (detailNotificationTimeDatetime) {
-    detailNotificationTimeDatetime.addEventListener('change', () => {
-        if (detailNotificationTimeDatetime.value && detailNotificationTimeText) {
-            detailNotificationTimeText.value = formatDueTime(new Date(detailNotificationTimeDatetime.value).getTime());
-        }
-    });
-}
-
-// Detail panel notification text input (natural language)
-if (detailNotificationTimeText) {
-    detailNotificationTimeText.addEventListener('blur', () => {
-        const value = detailNotificationTimeText.value.trim();
-        if (value) {
-            const parsed = parseNaturalDate(value);
-            if (parsed && detailNotificationTimeDatetime) {
-                const timestamp = new Date(parsed).getTime();
-                detailNotificationTimeDatetime.value = new Date(timestamp).toISOString().slice(0, 16);
-            }
-        }
-    });
-}
-
-// Add form notification button
-if (addNotificationBtn) {
-    addNotificationBtn.addEventListener('click', () => {
-        const timeValue = addNotificationTimeDatetime ? addNotificationTimeDatetime.value : null;
-        const message = addNotificationMessage ? addNotificationMessage.value.trim() : '';
-
-        if (!timeValue) {
-            return;
-        }
-
-        const scheduledTime = new Date(timeValue).getTime();
-        const todoText = todoInput.value.trim() || 'your task';
-
-        addFormScheduledNotifications.push({
-            time: scheduledTime,
-            message: message || `Reminder: ${todoText}`,
-            sent: false
-        });
-        renderAddFormScheduledNotifications();
-
-        // Clear inputs
-        if (addNotificationTimeText) addNotificationTimeText.value = '';
-        if (addNotificationTimeDatetime) addNotificationTimeDatetime.value = '';
-        if (addNotificationMessage) addNotificationMessage.value = '';
-    });
-}
-
-// Add form notification datetime picker - sync with text field
-if (addNotificationTimeDatetime) {
-    addNotificationTimeDatetime.addEventListener('change', () => {
-        if (addNotificationTimeDatetime.value && addNotificationTimeText) {
-            addNotificationTimeText.value = formatDueTime(new Date(addNotificationTimeDatetime.value).getTime());
-        }
-    });
-}
-
-// Add form notification text input (natural language)
-if (addNotificationTimeText) {
-    addNotificationTimeText.addEventListener('blur', () => {
-        const value = addNotificationTimeText.value.trim();
-        if (value) {
-            const parsed = parseNaturalDate(value);
-            if (parsed && addNotificationTimeDatetime) {
-                const timestamp = new Date(parsed).getTime();
-                addNotificationTimeDatetime.value = new Date(timestamp).toISOString().slice(0, 16);
-            }
-        }
-    });
-}
 
 // ============================================
 // SMS SCHEDULING FUNCTIONALITY

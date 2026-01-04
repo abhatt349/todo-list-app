@@ -34,27 +34,6 @@
         </div>
     </div>
 
-    <!-- Email Settings Modal -->
-    <div class="modal-backdrop" id="email-modal-backdrop"></div>
-    <div class="modal" id="email-settings-modal">
-        <div class="modal-header">
-            <h2>Email Notification Settings</h2>
-            <button class="modal-close" id="email-modal-close">&times;</button>
-        </div>
-        <div class="modal-content">
-            <p class="modal-description">Add email addresses to receive notifications for scheduled reminders.</p>
-            <div class="email-list" id="email-list">
-                <!-- Email addresses will be rendered here -->
-            </div>
-            <div class="add-email-form">
-                <input type="email" id="new-email-input" placeholder="Enter email address">
-                <button id="add-email-btn" class="add-email-btn">Add Email</button>
-            </div>
-            <p class="email-error" id="email-error"></p>
-            <p class="email-success" id="email-success"></p>
-        </div>
-    </div>
-
     <!-- Phone Settings Modal -->
     <div class="modal-backdrop" id="phone-modal-backdrop"></div>
     <div class="modal" id="phone-settings-modal">
@@ -95,7 +74,6 @@
                 </div>
                 <div class="user-controls">
                     <span class="user-email" id="user-email"></span>
-                    <button id="email-settings-btn" class="settings-btn" title="Email Notifications">Email Settings</button>
                     <button id="phone-settings-btn" class="settings-btn" title="SMS Notifications">SMS Settings</button>
                     <button id="logout-btn" class="logout-btn">Logout</button>
                 </div>
@@ -252,23 +230,6 @@
                             </div>
                         </div>
                         <div class="detail-field">
-                            <label>Email Notifications</label>
-                            <p class="field-hint">Schedule email reminders for this task (requires email setup in settings)</p>
-                            <div class="scheduled-notifications-list" id="add-notifications-list"></div>
-                            <div class="scheduled-notification-inputs">
-                                <div class="scheduled-row">
-                                    <label>When:</label>
-                                    <input type="text" id="add-notification-time-text" placeholder="e.g. tomorrow 9am">
-                                    <input type="datetime-local" id="add-notification-time-datetime">
-                                </div>
-                                <div class="scheduled-row">
-                                    <label>Message:</label>
-                                    <input type="text" id="add-notification-message" placeholder="Reminder message (optional)">
-                                    <button type="button" id="add-notification-btn" class="add-scheduled-btn">+ Add</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="detail-field">
                             <label>SMS Notifications</label>
                             <p class="field-hint">Schedule SMS reminders for this task (requires phone setup in settings)</p>
                             <div class="scheduled-sms-list" id="add-sms-list"></div>
@@ -363,7 +324,7 @@
                     <label>Notes</label>
                     <textarea id="detail-notes" placeholder="Add notes..."></textarea>
                 </div>
-                <div class="advanced-options">
+                <div class="advanced-options" id="detail-advanced-options">
                     <button type="button" class="advanced-toggle" id="advanced-toggle">
                         <span class="toggle-arrow">▶</span> Advanced Options
                     </button>
@@ -468,23 +429,6 @@
                                     <label>New priority:</label>
                                     <input type="number" id="scheduled-priority" min="0" max="10" step="0.1" placeholder="0-10">
                                     <button type="button" id="add-detail-scheduled-btn" class="add-scheduled-btn">+ Add</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="detail-field">
-                            <label>Email Notifications</label>
-                            <p class="field-hint">Schedule email reminders for this task (requires email setup in settings)</p>
-                            <div class="scheduled-notifications-list" id="detail-notifications-list"></div>
-                            <div class="scheduled-notification-inputs">
-                                <div class="scheduled-row">
-                                    <label>When:</label>
-                                    <input type="text" id="detail-notification-time-text" placeholder="e.g. tomorrow 9am">
-                                    <input type="datetime-local" id="detail-notification-time-datetime">
-                                </div>
-                                <div class="scheduled-row">
-                                    <label>Message:</label>
-                                    <input type="text" id="detail-notification-message" placeholder="Reminder message (optional)">
-                                    <button type="button" id="add-detail-notification-btn" class="add-scheduled-btn">+ Add</button>
                                 </div>
                             </div>
                         </div>

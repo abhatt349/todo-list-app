@@ -1,17 +1,9 @@
 /**
- * Firebase Cloud Functions for Todo List Notifications
- *
- * This file contains placeholder functions for sending email and SMS notifications.
+ * Firebase Cloud Functions for Todo List SMS Notifications
  *
  * SETUP REQUIRED:
  *
- * 1. EMAIL NOTIFICATIONS (using Nodemailer with Gmail or SMTP):
- *    - Set up Firebase Functions environment config:
- *      firebase functions:config:set email.user="your-email@gmail.com" email.pass="your-app-password"
- *    - For Gmail, use an App Password (not your regular password):
- *      https://support.google.com/accounts/answer/185833
- *
- * 2. SMS NOTIFICATIONS (using Twilio):
+ * SMS NOTIFICATIONS (using Twilio):
  *    - Create a Twilio account at https://www.twilio.com/
  *    - Get your Account SID, Auth Token, and a Twilio phone number
  *    - Set up Firebase Functions environment config:
@@ -26,57 +18,10 @@
 
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const nodemailer = require('nodemailer');
 
 // Initialize Firebase Admin
 admin.initializeApp();
 const db = admin.firestore();
-
-// ============================================
-// EMAIL NOTIFICATION FUNCTIONS
-// ============================================
-
-/**
- * Create email transporter using Gmail or SMTP
- * Configure with: firebase functions:config:set email.user="..." email.pass="..."
- */
-function createEmailTransporter() {
-    const emailConfig = functions.config().email || {};
-
-    return nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: emailConfig.user,
-            pass: emailConfig.pass
-        }
-    });
-}
-
-/**
- * Send an email notification
- * @param {string} to - Recipient email address
- * @param {string} subject - Email subject
- * @param {string} body - Email body (plain text)
- */
-async function sendEmail(to, subject, body) {
-    const transporter = createEmailTransporter();
-
-    const mailOptions = {
-        from: functions.config().email?.user || 'noreply@todolist.app',
-        to: to,
-        subject: subject,
-        text: body
-    };
-
-    try {
-        await transporter.sendMail(mailOptions);
-        console.log(`Email sent successfully to ${to}`);
-        return { success: true };
-    } catch (error) {
-        console.error('Error sending email:', error);
-        return { success: false, error: error.message };
-    }
-}
 
 // ============================================
 // SMS NOTIFICATION FUNCTIONS (TWILIO)
@@ -191,36 +136,6 @@ exports.checkScheduledNotifications = functions.pubsub
                 const todo = todoDoc.data();
                 const todoRef = db.collection('todos').doc(todoDoc.id);
 
-                // Check email notifications
-                if (todo.scheduledNotifications && todo.scheduledNotifications.length > 0) {
-                    const updatedNotifications = [];
-
-                    for (const notification of todo.scheduledNotifications) {
-                        if (notification.time <= now && !notification.sent) {
-                            // Get user's email addresses
-                            const userDoc = await db.collection('users').doc(todo.userId).get();
-                            const userData = userDoc.data();
-                            const emails = userData?.emails || [];
-
-                            // Send email to all registered addresses
-                            for (const email of emails) {
-                                await sendEmail(
-                                    email,
-                                    `Todo Reminder: ${todo.text}`,
-                                    notification.message || `Reminder: ${todo.text}`
-                                );
-                            }
-
-                            // Mark as sent
-                            notification.sent = true;
-                            notificationsSent++;
-                        }
-                        updatedNotifications.push(notification);
-                    }
-
-                    batch.update(todoRef, { scheduledNotifications: updatedNotifications });
-                }
-
                 // Check SMS notifications
                 if (todo.scheduledSms && todo.scheduledSms.length > 0) {
                     const updatedSms = [];
@@ -282,23 +197,4 @@ exports.testSendSms = functions.https.onCall(async (data, context) => {
     }
 
     return await sendSms(to, message);
-});
-
-/**
- * Test function to send an email (for debugging)
- * Call via Firebase SDK: firebase.functions().httpsCallable('testSendEmail')({ to, subject, body })
- */
-exports.testSendEmail = functions.https.onCall(async (data, context) => {
-    // Verify the user is authenticated
-    if (!context.auth) {
-        throw new functions.https.HttpsError('unauthenticated', 'Must be logged in');
-    }
-
-    const { to, subject, body } = data;
-
-    if (!to || !subject || !body) {
-        throw new functions.https.HttpsError('invalid-argument', 'Missing required fields');
-    }
-
-    return await sendEmail(to, subject, body);
 });
