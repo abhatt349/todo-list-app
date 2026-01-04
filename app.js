@@ -84,6 +84,23 @@ const addDueInfoIcon = document.getElementById('add-due-info-icon');
 const addDueInfoTooltip = document.getElementById('add-due-info-tooltip');
 const advancedToggle = document.getElementById('advanced-toggle');
 const detailAdvancedOptions = document.getElementById('detail-advanced-options');
+
+// Subsection toggle elements (Add form)
+const addRepeatSubsection = document.getElementById('add-repeat-subsection');
+const addRepeatToggle = document.getElementById('add-repeat-toggle');
+const addPrioritySubsection = document.getElementById('add-priority-subsection');
+const addPriorityToggle = document.getElementById('add-priority-toggle');
+const addSmsSubsection = document.getElementById('add-sms-subsection');
+const addSmsToggle = document.getElementById('add-sms-toggle');
+
+// Subsection toggle elements (Detail panel)
+const detailRepeatSubsection = document.getElementById('detail-repeat-subsection');
+const detailRepeatToggle = document.getElementById('detail-repeat-toggle');
+const detailPrioritySubsection = document.getElementById('detail-priority-subsection');
+const detailPriorityToggle = document.getElementById('detail-priority-toggle');
+const detailSmsSubsection = document.getElementById('detail-sms-subsection');
+const detailSmsToggle = document.getElementById('detail-sms-toggle');
+
 const scheduledTimeText = document.getElementById('scheduled-time-text');
 const scheduledTimeDatetime = document.getElementById('scheduled-time-datetime');
 const scheduledPriority = document.getElementById('scheduled-priority');
@@ -2138,6 +2155,19 @@ addAdvancedToggle.addEventListener('click', () => {
     addAdvancedOptions.classList.toggle('expanded');
 });
 
+// Add form subsection toggles
+addRepeatToggle.addEventListener('click', () => {
+    addRepeatSubsection.classList.toggle('expanded');
+});
+
+addPriorityToggle.addEventListener('click', () => {
+    addPrioritySubsection.classList.toggle('expanded');
+});
+
+addSmsToggle.addEventListener('click', () => {
+    addSmsSubsection.classList.toggle('expanded');
+});
+
 // Sync add form scheduled datetime with text input
 addScheduledTimeDatetime.addEventListener('change', () => {
     if (addScheduledTimeDatetime.value) {
@@ -2438,6 +2468,19 @@ detailPriorityInput.addEventListener('blur', async () => {
 // Advanced options toggle (detail panel)
 advancedToggle.addEventListener('click', () => {
     detailAdvancedOptions.classList.toggle('expanded');
+});
+
+// Detail panel subsection toggles
+detailRepeatToggle.addEventListener('click', () => {
+    detailRepeatSubsection.classList.toggle('expanded');
+});
+
+detailPriorityToggle.addEventListener('click', () => {
+    detailPrioritySubsection.classList.toggle('expanded');
+});
+
+detailSmsToggle.addEventListener('click', () => {
+    detailSmsSubsection.classList.toggle('expanded');
 });
 
 // Save scheduled priority change - helper function

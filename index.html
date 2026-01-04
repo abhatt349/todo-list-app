@@ -61,22 +61,29 @@
     <div class="detail-backdrop" id="detail-backdrop"></div>
     <div class="app-wrapper" id="app-wrapper" style="display: none;">
         <div class="container">
-            <div class="top-bar">
-                <div class="timezone-selector">
-                    <label for="timezone-select">Timezone:</label>
-                    <select id="timezone-select"></select>
+            <div class="top-bar-wrapper">
+                <div class="top-bar-toggle" id="top-bar-toggle">
+                    <span class="top-bar-toggle-icon">&#9881;</span>
+                    <span class="top-bar-toggle-text">Settings</span>
+                    <span class="top-bar-toggle-arrow">&#9662;</span>
                 </div>
-                <div class="backup-controls">
-                    <button id="export-btn" class="backup-btn" title="Export backup">⬇ Export</button>
-                    <label class="backup-btn" title="Import backup">
-                        ⬆ Import
-                        <input type="file" id="import-input" accept=".json" hidden>
-                    </label>
-                </div>
-                <div class="user-controls">
-                    <span class="user-email" id="user-email"></span>
-                    <button id="phone-settings-btn" class="settings-btn" title="SMS Notifications">SMS Settings</button>
-                    <button id="logout-btn" class="logout-btn">Logout</button>
+                <div class="top-bar" id="top-bar">
+                    <div class="timezone-selector">
+                        <label for="timezone-select">Timezone:</label>
+                        <select id="timezone-select"></select>
+                    </div>
+                    <div class="backup-controls">
+                        <button id="export-btn" class="backup-btn" title="Export backup">Export</button>
+                        <label class="backup-btn" title="Import backup">
+                            Import
+                            <input type="file" id="import-input" accept=".json" hidden>
+                        </label>
+                    </div>
+                    <div class="user-controls">
+                        <span class="user-email" id="user-email"></span>
+                        <button id="phone-settings-btn" class="settings-btn" title="SMS Notifications">SMS Settings</button>
+                        <button id="logout-btn" class="logout-btn">Logout</button>
+                    </div>
                 </div>
             </div>
 
@@ -128,9 +135,12 @@
                         <span class="toggle-arrow">▶</span> Advanced Options
                     </button>
                     <div class="advanced-content" id="add-advanced-content">
-                        <div class="detail-field">
-                            <label>Repeat</label>
-                            <div class="recurrence-section" id="add-recurrence-section">
+                        <div class="advanced-subsection" id="add-repeat-subsection">
+                            <button type="button" class="subsection-toggle" id="add-repeat-toggle">
+                                <span class="toggle-arrow">▶</span> Repeat / Recurrence
+                            </button>
+                            <div class="subsection-content">
+                                <div class="recurrence-section" id="add-recurrence-section">
                                 <select id="add-recurrence-type" class="recurrence-type-select">
                                     <option value="none">Does not repeat</option>
                                     <option value="daily">Daily</option>
@@ -212,9 +222,13 @@
                                     </div>
                                 </div>
                             </div>
+                            </div>
                         </div>
-                        <div class="detail-field">
-                            <label>Scheduled Priority Changes</label>
+                        <div class="advanced-subsection" id="add-priority-subsection">
+                            <button type="button" class="subsection-toggle" id="add-priority-toggle">
+                                <span class="toggle-arrow">▶</span> Scheduled Priority Changes
+                            </button>
+                            <div class="subsection-content">
                             <p class="field-hint">Queue up times when this task will automatically change priority</p>
                             <div class="scheduled-changes-list" id="add-scheduled-list"></div>
                             <div class="scheduled-priority-inputs">
@@ -229,9 +243,13 @@
                                     <button type="button" id="add-scheduled-btn" class="add-scheduled-btn">+ Add</button>
                                 </div>
                             </div>
+                            </div>
                         </div>
-                        <div class="detail-field">
-                            <label>SMS Notifications</label>
+                        <div class="advanced-subsection" id="add-sms-subsection">
+                            <button type="button" class="subsection-toggle" id="add-sms-toggle">
+                                <span class="toggle-arrow">▶</span> SMS Notifications
+                            </button>
+                            <div class="subsection-content">
                             <p class="field-hint">Schedule SMS reminders for this task (requires phone setup in settings)</p>
                             <div class="scheduled-sms-list" id="add-sms-list"></div>
                             <div class="scheduled-sms-inputs">
@@ -245,6 +263,7 @@
                                     <input type="text" id="add-sms-message" placeholder="SMS message (optional)">
                                     <button type="button" id="add-sms-btn" class="add-scheduled-btn">+ Add</button>
                                 </div>
+                            </div>
                             </div>
                         </div>
                     </div>
@@ -330,8 +349,11 @@
                         <span class="toggle-arrow">▶</span> Advanced Options
                     </button>
                     <div class="advanced-content" id="advanced-content">
-                        <div class="detail-field">
-                            <label>Repeat</label>
+                        <div class="advanced-subsection" id="detail-repeat-subsection">
+                            <button type="button" class="subsection-toggle" id="detail-repeat-toggle">
+                                <span class="toggle-arrow">▶</span> Repeat / Recurrence
+                            </button>
+                            <div class="subsection-content">
                             <div class="recurrence-display" id="detail-recurrence-display">Does not repeat</div>
                             <div class="recurrence-section" id="detail-recurrence-section">
                                 <select id="detail-recurrence-type" class="recurrence-type-select">
@@ -415,9 +437,13 @@
                                     </div>
                                 </div>
                             </div>
+                            </div>
                         </div>
-                        <div class="detail-field">
-                            <label>Scheduled Priority Changes</label>
+                        <div class="advanced-subsection" id="detail-priority-subsection">
+                            <button type="button" class="subsection-toggle" id="detail-priority-toggle">
+                                <span class="toggle-arrow">▶</span> Scheduled Priority Changes
+                            </button>
+                            <div class="subsection-content">
                             <p class="field-hint">Queue up times when this task will automatically change priority</p>
                             <div class="scheduled-changes-list" id="detail-scheduled-list"></div>
                             <div class="scheduled-priority-inputs">
@@ -432,9 +458,13 @@
                                     <button type="button" id="add-detail-scheduled-btn" class="add-scheduled-btn">+ Add</button>
                                 </div>
                             </div>
+                            </div>
                         </div>
-                        <div class="detail-field">
-                            <label>SMS Notifications</label>
+                        <div class="advanced-subsection" id="detail-sms-subsection">
+                            <button type="button" class="subsection-toggle" id="detail-sms-toggle">
+                                <span class="toggle-arrow">▶</span> SMS Notifications
+                            </button>
+                            <div class="subsection-content">
                             <p class="field-hint">Schedule SMS reminders for this task (requires phone setup in settings)</p>
                             <div class="scheduled-sms-list" id="detail-sms-list"></div>
                             <div class="scheduled-sms-inputs">
@@ -448,6 +478,7 @@
                                     <input type="text" id="detail-sms-message" placeholder="SMS message (optional)">
                                     <button type="button" id="add-detail-sms-btn" class="add-scheduled-btn">+ Add</button>
                                 </div>
+                            </div>
                             </div>
                         </div>
                     </div>
