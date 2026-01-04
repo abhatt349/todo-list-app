@@ -1891,7 +1891,7 @@ h1 {
 /* Weekday Selector */
 .weekday-selector {
     display: flex;
-    gap: 8px;
+    gap: 4px;
     flex-wrap: nowrap;
     margin-top: 8px;
     justify-content: flex-start;
@@ -1901,13 +1901,13 @@ h1 {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     background: var(--gray-100);
     cursor: pointer;
     transition: all var(--transition);
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     color: var(--gray-600);
     border: 2px solid transparent;
