@@ -1543,7 +1543,7 @@ function openDetailPanel(id) {
     }
 
     // Collapse advanced options by default
-    advancedOptions.classList.remove('expanded');
+    detailAdvancedOptions.classList.remove('expanded');
 
     detailPanel.classList.add('open');
     detailBackdrop.classList.add('open');
