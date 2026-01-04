@@ -596,12 +596,9 @@ function renderTodos(docs) {
     // Filter by search query
     const filteredDocs = docs.filter(matchesSearch);
 
-    if (filteredDocs.length === 0) {
-        if (searchQuery) {
-            todoList.innerHTML = '<li class="empty-state">No matching tasks found.</li>';
-        } else {
-            todoList.innerHTML = '<li class="empty-state">No todos yet. Add one above!</li>';
-        }
+    // Show message if searching with no results
+    if (filteredDocs.length === 0 && searchQuery) {
+        todoList.innerHTML = '<li class="empty-state">No matching tasks found.</li>';
         return;
     }
 
