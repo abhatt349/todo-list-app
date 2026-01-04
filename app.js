@@ -133,6 +133,135 @@ const RECURRENCE_END_TYPES = {
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const FULL_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+// Browser tab indicator for urgent tasks
+let originalFavicon = null;
+let urgentFaviconCanvas = null;
+
+// Update the browser tab title and favicon based on urgent tasks count
+function updateBrowserTabIndicator() {
+    // Count urgent incomplete tasks (priority >= 10, not completed, not deleted)
+    const urgentCount = currentDocs.filter(doc => {
+        const data = doc.data();
+        return data.priority >= 10 && !data.completed && !data.deleted;
+    }).length;
+
+    // Update document title
+    if (urgentCount > 0) {
+        document.title = `(${urgentCount}) Todo List`;
+    } else {
+        document.title = 'Todo List';
+    }
+
+    // Update favicon with badge
+    updateFaviconBadge(urgentCount);
+}
+
+// Create or update favicon with urgent count badge
+function updateFaviconBadge(count) {
+    // Get or create favicon link element
+    let faviconLink = document.querySelector('link[rel="icon"]');
+    if (!faviconLink) {
+        faviconLink = document.createElement('link');
+        faviconLink.rel = 'icon';
+        faviconLink.type = 'image/png';
+        document.head.appendChild(faviconLink);
+    }
+
+    // Store original favicon on first call
+    if (!originalFavicon) {
+        originalFavicon = 'icon-192.png';
+    }
+
+    if (count === 0) {
+        // No urgent tasks - use original favicon
+        faviconLink.href = originalFavicon;
+        return;
+    }
+
+    // Create canvas for dynamic favicon
+    if (!urgentFaviconCanvas) {
+        urgentFaviconCanvas = document.createElement('canvas');
+        urgentFaviconCanvas.width = 32;
+        urgentFaviconCanvas.height = 32;
+    }
+
+    const canvas = urgentFaviconCanvas;
+    const ctx = canvas.getContext('2d');
+
+    // Load original icon and draw badge
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = function() {
+        // Clear canvas
+        ctx.clearRect(0, 0, 32, 32);
+
+        // Draw original icon
+        ctx.drawImage(img, 0, 0, 32, 32);
+
+        // Draw red circle badge in top-right corner
+        const badgeRadius = 10;
+        const badgeX = 32 - badgeRadius - 1;
+        const badgeY = badgeRadius + 1;
+
+        ctx.beginPath();
+        ctx.arc(badgeX, badgeY, badgeRadius, 0, 2 * Math.PI);
+        ctx.fillStyle = '#e53935';
+        ctx.fill();
+
+        // Draw white border around badge
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Draw count text
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // Display count or "9+" if more than 9
+        const displayText = count > 9 ? '9+' : count.toString();
+        ctx.fillText(displayText, badgeX, badgeY);
+
+        // Set the favicon to our canvas
+        faviconLink.href = canvas.toDataURL('image/png');
+    };
+
+    img.onerror = function() {
+        // If image fails to load, just create a simple badge icon
+        ctx.clearRect(0, 0, 32, 32);
+
+        // Draw a simple checkmark icon background
+        ctx.fillStyle = '#4a90d9';
+        ctx.fillRect(0, 0, 32, 32);
+
+        // Draw red badge
+        const badgeRadius = 10;
+        const badgeX = 32 - badgeRadius - 1;
+        const badgeY = badgeRadius + 1;
+
+        ctx.beginPath();
+        ctx.arc(badgeX, badgeY, badgeRadius, 0, 2 * Math.PI);
+        ctx.fillStyle = '#e53935';
+        ctx.fill();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const displayText = count > 9 ? '9+' : count.toString();
+        ctx.fillText(displayText, badgeX, badgeY);
+
+        faviconLink.href = canvas.toDataURL('image/png');
+    };
+
+    img.src = originalFavicon;
+}
+
 // Get ordinal suffix for a number (1st, 2nd, 3rd, etc.)
 function getOrdinalSuffix(n) {
     const s = ['th', 'st', 'nd', 'rd'];
@@ -625,6 +754,8 @@ function showLogin() {
     deletedDocs = [];
     authContainer.style.display = 'flex';
     appWrapper.style.display = 'none';
+    // Reset browser tab indicator
+    updateBrowserTabIndicator();
 }
 
 function initApp() {
@@ -689,6 +820,7 @@ function startTodosListener() {
         deletedDocs = deleted;
         renderTodos(currentDocs);
         renderDeletedTodos();
+        updateBrowserTabIndicator();
     });
 
     // Re-check for overdue items and scheduled changes every minute
@@ -736,6 +868,7 @@ function startTodosListener() {
                 }
             });
             renderTodos(currentDocs);
+            updateBrowserTabIndicator();
         }
     }, 60000);
 }
@@ -2038,6 +2171,7 @@ importInput.addEventListener('change', (e) => {
 searchInput.addEventListener('input', (e) => {
     searchQuery = e.target.value.trim();
     renderTodos(currentDocs);
+    updateBrowserTabIndicator();
 });
 
 // Tag filter functionality
@@ -2060,6 +2194,7 @@ tagFilterDropdown.addEventListener('change', (e) => {
         updateTagFilterButton();
         renderTodos(currentDocs);
         renderTagFilterDropdown();
+        updateBrowserTabIndicator();
     }
 });
 
@@ -2069,6 +2204,7 @@ tagFilterDropdown.addEventListener('click', (e) => {
         updateTagFilterButton();
         renderTodos(currentDocs);
         renderTagFilterDropdown();
+        updateBrowserTabIndicator();
     }
 });
 
@@ -2437,6 +2573,7 @@ timezoneSelect.addEventListener('change', (e) => {
     localStorage.setItem('timezone', selectedTimezone);
     // Re-render to update all displayed times
     renderTodos(currentDocs);
+    updateBrowserTabIndicator();
     // Update detail panel if open
     if (selectedTodoId) {
         openDetailPanel(selectedTodoId);
