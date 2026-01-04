@@ -1065,8 +1065,9 @@ h1 {
 .todo-main-row {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
     width: 100%;
+    flex-wrap: nowrap;
 }
 
 .todo-inline-detail {
@@ -1149,9 +1150,11 @@ h1 {
 
 .todo-tags {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-left: 6px;
+    flex-wrap: nowrap;
+    gap: 4px;
+    margin-left: auto;
+    max-width: 280px;
+    overflow: hidden;
 }
 
 .tag-badge {
@@ -1160,6 +1163,7 @@ h1 {
     font-size: 11px;
     font-weight: 600;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .priority-badge {
@@ -1887,25 +1891,29 @@ h1 {
 /* Weekday Selector */
 .weekday-selector {
     display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
+    gap: 8px;
+    flex-wrap: nowrap;
     margin-top: 8px;
+    justify-content: flex-start;
 }
 
 .weekday-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     background: var(--gray-100);
     cursor: pointer;
     transition: all var(--transition);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--gray-600);
     border: 2px solid transparent;
+    flex-shrink: 0;
+    line-height: 1;
+    text-align: center;
 }
 
 .weekday-btn:hover {
