@@ -1229,17 +1229,26 @@ h1 {
         flex-wrap: wrap;
     }
 
+    /* Task name takes full width on first row */
     #todo-input {
         width: 100%;
-        order: -1;
+        flex: none;
     }
 
+    /* Priority and due date share second row */
     #priority-select {
-        flex: 1;
+        width: 70px;
+        flex: none;
     }
 
     #due-time-input {
         flex: 1;
+        min-width: 0;
+    }
+
+    /* Add button on its own or with due date */
+    #add-btn {
+        flex: none;
     }
 
     .due-time-picker-container {
