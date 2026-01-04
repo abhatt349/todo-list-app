@@ -18,6 +18,7 @@ const logoutBtn = document.getElementById('logout-btn');
 const todoInput = document.getElementById('todo-input');
 const prioritySelect = document.getElementById('priority-select');
 const dueTimeInput = document.getElementById('due-time-input');
+const dueTimeDatetime = document.getElementById('due-time-datetime');
 const tagsInput = document.getElementById('tags-input');
 const tagsInputContainer = document.getElementById('tags-input-container');
 const detailTagsContainer = document.getElementById('detail-tags-container');
@@ -901,7 +902,14 @@ async function addTodo() {
     if (isNaN(priority) || priority < 0) priority = 0;
     if (priority > 10) priority = 10;
 
-    const dueTime = parseNaturalDate(dueTimeInput.value);
+    // Use datetime picker if set, otherwise parse text input
+    let dueTime = null;
+    if (dueTimeDatetime.value) {
+        dueTime = new Date(dueTimeDatetime.value).toISOString();
+    } else if (dueTimeInput.value.trim()) {
+        dueTime = parseNaturalDate(dueTimeInput.value);
+    }
+
     const tags = addFormTagInput ? addFormTagInput.getTags() : [];
     const notes = notesInput.value.trim();
 
@@ -920,6 +928,7 @@ async function addTodo() {
     todoInput.value = '';
     prioritySelect.value = '5';
     dueTimeInput.value = '';
+    dueTimeDatetime.value = '';
     if (addFormTagInput) addFormTagInput.clear();
     notesInput.value = '';
     todoInput.focus();
@@ -1462,6 +1471,13 @@ addBtn.addEventListener('click', addTodo);
 
 todoInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') addTodo();
+});
+
+// Sync datetime picker with text input
+dueTimeDatetime.addEventListener('change', () => {
+    if (dueTimeDatetime.value) {
+        dueTimeInput.value = formatDueTime(new Date(dueTimeDatetime.value).getTime());
+    }
 });
 
 // Backup/restore

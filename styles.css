@@ -601,6 +601,14 @@ h1 {
     flex-shrink: 0;
 }
 
+#due-time-datetime {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    width: auto;
+}
+
 .due-input-wrapper .info-tooltip {
     position: absolute;
     top: 100%;
