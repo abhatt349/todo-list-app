@@ -23,6 +23,11 @@ const tagsInput = document.getElementById('tags-input');
 const tagsInputContainer = document.getElementById('tags-input-container');
 const detailTagsContainer = document.getElementById('detail-tags-container');
 const notesInput = document.getElementById('notes-input');
+const addAdvancedOptions = document.getElementById('add-advanced-options');
+const addAdvancedToggle = document.getElementById('add-advanced-toggle');
+const addScheduledTimeText = document.getElementById('add-scheduled-time-text');
+const addScheduledTimeDatetime = document.getElementById('add-scheduled-time-datetime');
+const addScheduledPriority = document.getElementById('add-scheduled-priority');
 const addBtn = document.getElementById('add-btn');
 const todoList = document.getElementById('todo-list');
 const searchInput = document.getElementById('search-input');
@@ -913,6 +918,15 @@ async function addTodo() {
     const tags = addFormTagInput ? addFormTagInput.getTags() : [];
     const notes = notesInput.value.trim();
 
+    // Build scheduled priority change if set
+    let scheduledPriorityChange = null;
+    if (addScheduledTimeDatetime.value && addScheduledPriority.value !== '') {
+        scheduledPriorityChange = {
+            time: new Date(addScheduledTimeDatetime.value).getTime(),
+            newPriority: Math.max(0, Math.min(10, parseFloat(addScheduledPriority.value) || 5))
+        };
+    }
+
     await todosRef.add({
         userId: currentUser.id,
         text: text,
@@ -922,6 +936,7 @@ async function addTodo() {
         dueTime: dueTime,
         tags: tags,
         notes: notes || '',
+        scheduledPriorityChange: scheduledPriorityChange,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
@@ -931,6 +946,10 @@ async function addTodo() {
     dueTimeDatetime.value = '';
     if (addFormTagInput) addFormTagInput.clear();
     notesInput.value = '';
+    addScheduledTimeText.value = '';
+    addScheduledTimeDatetime.value = '';
+    addScheduledPriority.value = '';
+    addAdvancedOptions.classList.remove('expanded');
     todoInput.focus();
 }
 
@@ -1477,6 +1496,30 @@ todoInput.addEventListener('keypress', (e) => {
 dueTimeDatetime.addEventListener('change', () => {
     if (dueTimeDatetime.value) {
         dueTimeInput.value = formatDueTime(new Date(dueTimeDatetime.value).getTime());
+    }
+});
+
+// Add form advanced options toggle
+addAdvancedToggle.addEventListener('click', () => {
+    addAdvancedOptions.classList.toggle('expanded');
+});
+
+// Sync add form scheduled datetime with text input
+addScheduledTimeDatetime.addEventListener('change', () => {
+    if (addScheduledTimeDatetime.value) {
+        addScheduledTimeText.value = formatDueTime(new Date(addScheduledTimeDatetime.value).getTime());
+    }
+});
+
+// Parse natural language for add form scheduled time
+addScheduledTimeText.addEventListener('blur', () => {
+    const value = addScheduledTimeText.value.trim();
+    if (value) {
+        const parsed = parseNaturalDate(value);
+        if (parsed) {
+            const timestamp = new Date(parsed).getTime();
+            addScheduledTimeDatetime.value = new Date(timestamp).toISOString().slice(0, 16);
+        }
     }
 });
 
