@@ -1,6 +1,7 @@
 const todoInput = document.getElementById('todo-input');
 const prioritySelect = document.getElementById('priority-select');
 const dueTimeInput = document.getElementById('due-time-input');
+const notesInput = document.getElementById('notes-input');
 const addBtn = document.getElementById('add-btn');
 const todoList = document.getElementById('todo-list');
 const detailPanel = document.getElementById('detail-panel');
@@ -384,18 +385,21 @@ async function addTodo() {
     if (priority > 10) priority = 10;
 
     const dueTime = parseNaturalDate(dueTimeInput.value);
+    const notes = notesInput.value.trim();
 
     await todosRef.add({
         text: text,
         priority: priority,
         completed: false,
         dueTime: dueTime,
+        notes: notes || '',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
     todoInput.value = '';
     prioritySelect.value = '5';
     dueTimeInput.value = '';
+    notesInput.value = '';
     todoInput.focus();
 }
 
