@@ -446,12 +446,7 @@ async function addTodo() {
 
 // Toggle todo completion
 async function toggleTodo(id, completed) {
-    const updates = { completed: !completed };
-    // Set priority to 0 when marking as complete
-    if (!completed) {
-        updates.priority = 0;
-    }
-    await todosRef.doc(id).update(updates);
+    await todosRef.doc(id).update({ completed: !completed });
 }
 
 // Soft delete a todo (move to deleted section)
