@@ -97,6 +97,7 @@ let todosRef;
 let usersRef;
 let currentUser = null; // { id, username }
 let unsubscribeTodos = null;
+let overdueCheckInterval = null;
 let currentDocs = [];
 let deletedDocs = [];
 let notifiedIds = new Set(); // Track which todos have already triggered notifications
@@ -462,6 +463,18 @@ function isOverdue(todo) {
     return new Date(todo.dueTime) <= new Date();
 }
 
+// Handle overdue item: boost priority and send notification
+function handleOverdueItem(doc) {
+    const data = doc.data();
+    if (isOverdue(data)) {
+        if (data.priority < 10) {
+            todosRef.doc(doc.id).update({ priority: 10 })
+                .catch(err => console.error('Failed to update overdue priority:', err));
+        }
+        sendOverdueNotification(data, doc.id);
+    }
+}
+
 // Parse natural language date input
 function parseNaturalDate(input) {
     if (!input || !input.trim()) return null;
@@ -604,6 +617,10 @@ function showLogin() {
         unsubscribeTodos();
         unsubscribeTodos = null;
     }
+    if (overdueCheckInterval) {
+        clearInterval(overdueCheckInterval);
+        overdueCheckInterval = null;
+    }
     currentDocs = [];
     deletedDocs = [];
     authContainer.style.display = 'flex';
@@ -644,12 +661,7 @@ function startTodosListener() {
             } else {
                 activeDocs.push(doc);
                 // Boost overdue items to max priority and send notifications
-                if (isOverdue(data)) {
-                    if (data.priority < 10) {
-                        todosRef.doc(doc.id).update({ priority: 10 });
-                    }
-                    sendOverdueNotification(data, doc.id);
-                }
+                handleOverdueItem(doc);
             }
         });
 
@@ -680,19 +692,17 @@ function startTodosListener() {
     });
 
     // Re-check for overdue items and scheduled changes every minute
-    setInterval(() => {
+    if (overdueCheckInterval) {
+        clearInterval(overdueCheckInterval);
+    }
+    overdueCheckInterval = setInterval(() => {
         if (currentDocs.length > 0) {
             const now = Date.now();
             currentDocs.forEach(doc => {
                 const data = doc.data();
 
                 // Check for newly overdue items and send notifications
-                if (isOverdue(data)) {
-                    if (data.priority < 10) {
-                        todosRef.doc(doc.id).update({ priority: 10 });
-                    }
-                    sendOverdueNotification(data, doc.id);
-                }
+                handleOverdueItem(doc);
 
                 // Check for scheduled priority changes (supports both array and single object for backwards compat)
                 let scheduledChanges = data.scheduledPriorityChanges || [];
@@ -721,7 +731,7 @@ function startTodosListener() {
                             priority: latestPriority,
                             scheduledPriorityChanges: pendingChanges,
                             scheduledPriorityChange: null // Clear legacy field
-                        });
+                        }).catch(err => console.error('Failed to apply scheduled priority change:', err));
                     }
                 }
             });
@@ -1890,7 +1900,7 @@ async function handleDrop(e) {
 // Export all todos to a JSON file
 async function exportBackup() {
     try {
-        const snapshot = await todosRef.get();
+        const snapshot = await todosRef.where('userId', '==', currentUser.id).get();
         const todos = [];
         snapshot.forEach(doc => {
             todos.push({
@@ -2114,56 +2124,64 @@ todoList.addEventListener('click', (e) => {
 
 // Inline detail input handlers (for mobile)
 todoList.addEventListener('change', async (e) => {
-    const item = e.target.closest('.todo-item');
-    if (!item) return;
-    const id = item.dataset.id;
+    try {
+        const item = e.target.closest('.todo-item');
+        if (!item) return;
+        const id = item.dataset.id;
 
-    // Inline priority change
-    if (e.target.classList.contains('inline-priority')) {
-        const priority = parseFloat(e.target.value) || 5;
-        const clampedPriority = Math.max(0, Math.min(10, priority));
-        await todosRef.doc(id).update({ priority: clampedPriority });
-    }
-
-    // Inline datetime change
-    if (e.target.classList.contains('inline-due-datetime')) {
-        if (e.target.value) {
-            const timestamp = new Date(e.target.value).getTime();
-            await todosRef.doc(id).update({ dueTime: timestamp });
-        } else {
-            await todosRef.doc(id).update({ dueTime: null });
+        // Inline priority change
+        if (e.target.classList.contains('inline-priority')) {
+            const priority = parseFloat(e.target.value) || 5;
+            const clampedPriority = Math.max(0, Math.min(10, priority));
+            await todosRef.doc(id).update({ priority: clampedPriority });
         }
+
+        // Inline datetime change
+        if (e.target.classList.contains('inline-due-datetime')) {
+            if (e.target.value) {
+                const timestamp = new Date(e.target.value).getTime();
+                await todosRef.doc(id).update({ dueTime: timestamp });
+            } else {
+                await todosRef.doc(id).update({ dueTime: null });
+            }
+        }
+    } catch (error) {
+        console.error('Failed to update todo:', error);
     }
 });
 
 todoList.addEventListener('blur', async (e) => {
-    const item = e.target.closest('.todo-item');
-    if (!item) return;
-    const id = item.dataset.id;
+    try {
+        const item = e.target.closest('.todo-item');
+        if (!item) return;
+        const id = item.dataset.id;
 
-    // Inline due text (natural language)
-    if (e.target.classList.contains('inline-due-text')) {
-        const value = e.target.value.trim();
-        if (value === '') {
-            await todosRef.doc(id).update({ dueTime: null });
-        } else {
-            const parsed = parseNaturalDate(value);
-            if (parsed) {
-                const timestamp = new Date(parsed).getTime();
-                await todosRef.doc(id).update({ dueTime: timestamp });
+        // Inline due text (natural language)
+        if (e.target.classList.contains('inline-due-text')) {
+            const value = e.target.value.trim();
+            if (value === '') {
+                await todosRef.doc(id).update({ dueTime: null });
+            } else {
+                const parsed = parseNaturalDate(value);
+                if (parsed) {
+                    const timestamp = new Date(parsed).getTime();
+                    await todosRef.doc(id).update({ dueTime: timestamp });
+                }
             }
         }
-    }
 
-    // Inline tags
-    if (e.target.classList.contains('inline-tags')) {
-        const tags = parseTags(e.target.value);
-        await todosRef.doc(id).update({ tags: tags });
-    }
+        // Inline tags
+        if (e.target.classList.contains('inline-tags')) {
+            const tags = parseTags(e.target.value);
+            await todosRef.doc(id).update({ tags: tags });
+        }
 
-    // Inline notes
-    if (e.target.classList.contains('inline-notes')) {
-        await todosRef.doc(id).update({ notes: e.target.value || '' });
+        // Inline notes
+        if (e.target.classList.contains('inline-notes')) {
+            await todosRef.doc(id).update({ notes: e.target.value || '' });
+        }
+    } catch (error) {
+        console.error('Failed to update todo:', error);
     }
 }, true); // Use capture to catch blur events
 

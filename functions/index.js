@@ -127,6 +127,7 @@ exports.checkScheduledNotifications = functions.pubsub
             // Get all todos with scheduled notifications that are due
             const todosSnapshot = await db.collection('todos')
                 .where('deleted', '==', false)
+                .where('completed', '==', false)
                 .get();
 
             const batch = db.batch();
