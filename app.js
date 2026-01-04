@@ -37,27 +37,43 @@ let selectedTimezone = localStorage.getItem('timezone') || Intl.DateTimeFormat()
 
 // Common timezones grouped by region
 const timezones = [
-    { value: 'Pacific/Honolulu', label: 'Hawaii (HST)' },
-    { value: 'America/Anchorage', label: 'Alaska (AKST)' },
-    { value: 'America/Los_Angeles', label: 'Pacific (PST)' },
-    { value: 'America/Denver', label: 'Mountain (MST)' },
-    { value: 'America/Chicago', label: 'Central (CST)' },
-    { value: 'America/New_York', label: 'Eastern (EST)' },
-    { value: 'America/Sao_Paulo', label: 'São Paulo (BRT)' },
-    { value: 'Atlantic/Reykjavik', label: 'Iceland (GMT)' },
-    { value: 'Europe/London', label: 'London (GMT)' },
-    { value: 'Europe/Paris', label: 'Paris (CET)' },
-    { value: 'Europe/Berlin', label: 'Berlin (CET)' },
-    { value: 'Europe/Moscow', label: 'Moscow (MSK)' },
-    { value: 'Asia/Dubai', label: 'Dubai (GST)' },
-    { value: 'Asia/Kolkata', label: 'India (IST)' },
-    { value: 'Asia/Bangkok', label: 'Bangkok (ICT)' },
-    { value: 'Asia/Singapore', label: 'Singapore (SGT)' },
-    { value: 'Asia/Hong_Kong', label: 'Hong Kong (HKT)' },
-    { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
-    { value: 'Australia/Sydney', label: 'Sydney (AEST)' },
-    { value: 'Pacific/Auckland', label: 'Auckland (NZST)' },
+    { value: 'Pacific/Honolulu', label: 'Hawaii' },
+    { value: 'America/Anchorage', label: 'Alaska' },
+    { value: 'America/Los_Angeles', label: 'Pacific' },
+    { value: 'America/Denver', label: 'Mountain' },
+    { value: 'America/Chicago', label: 'Central' },
+    { value: 'America/New_York', label: 'Eastern' },
+    { value: 'America/Sao_Paulo', label: 'São Paulo' },
+    { value: 'Atlantic/Reykjavik', label: 'Iceland' },
+    { value: 'Europe/London', label: 'London' },
+    { value: 'Europe/Paris', label: 'Paris' },
+    { value: 'Europe/Berlin', label: 'Berlin' },
+    { value: 'Europe/Moscow', label: 'Moscow' },
+    { value: 'Asia/Dubai', label: 'Dubai' },
+    { value: 'Asia/Kolkata', label: 'India' },
+    { value: 'Asia/Bangkok', label: 'Bangkok' },
+    { value: 'Asia/Singapore', label: 'Singapore' },
+    { value: 'Asia/Hong_Kong', label: 'Hong Kong' },
+    { value: 'Asia/Tokyo', label: 'Tokyo' },
+    { value: 'Australia/Sydney', label: 'Sydney' },
+    { value: 'Pacific/Auckland', label: 'Auckland' },
 ];
+
+// Get UTC offset string for a timezone (e.g., "+5:30", "-8")
+function getTimezoneOffset(timezone) {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        timeZoneName: 'shortOffset'
+    });
+    const parts = formatter.formatToParts(now);
+    const offsetPart = parts.find(p => p.type === 'timeZoneName');
+    if (offsetPart) {
+        // Convert "GMT-8" or "GMT+5:30" to "-8" or "+5:30"
+        return offsetPart.value.replace('GMT', '');
+    }
+    return '';
+}
 
 // Initialize timezone selector
 function initTimezoneSelector() {
@@ -66,14 +82,15 @@ function initTimezoneSelector() {
     const hasLocalTz = timezones.some(tz => tz.value === localTz);
 
     if (!hasLocalTz) {
-        timezones.unshift({ value: localTz, label: `${localTz} (Local)` });
+        timezones.unshift({ value: localTz, label: localTz.split('/').pop().replace(/_/g, ' ') });
     }
 
-    // Populate dropdown
+    // Populate dropdown with UTC offsets
     timezones.forEach(tz => {
         const option = document.createElement('option');
         option.value = tz.value;
-        option.textContent = tz.label;
+        const offset = getTimezoneOffset(tz.value);
+        option.textContent = `${tz.label} (UTC${offset})`;
         if (tz.value === selectedTimezone) {
             option.selected = true;
         }
