@@ -4,6 +4,7 @@ const dueTimeInput = document.getElementById('due-time-input');
 const notesInput = document.getElementById('notes-input');
 const addBtn = document.getElementById('add-btn');
 const todoList = document.getElementById('todo-list');
+const searchInput = document.getElementById('search-input');
 const detailPanel = document.getElementById('detail-panel');
 const detailTitle = document.getElementById('detail-title');
 const detailDueInput = document.getElementById('detail-due-input');
@@ -23,6 +24,7 @@ let currentDocs = [];
 let deletedDocs = [];
 let notifiedIds = new Set(); // Track which todos have already triggered notifications
 let selectedTodoId = null; // Currently selected todo for detail panel
+let searchQuery = ''; // Current search query
 
 // Request notification permission on load
 if ('Notification' in window && Notification.permission === 'default') {
@@ -299,20 +301,24 @@ function renderTodoItem(doc) {
     const showSnooze = isUrgent && !todo.completed;
     const dueTimeDatetime = todo.dueTime ? new Date(todo.dueTime).toISOString().slice(0, 16) : '';
 
+    // Hide due time and priority for completed tasks
+    const showDueTime = !todo.completed;
+    const showPriority = !todo.completed;
+
     return `
         <li class="${classes.join(' ')}"
             data-id="${doc.id}"
             data-duetime="${todo.dueTime || ''}"
             draggable="true"
-            style="background-color: ${overdue ? '#ffcdd2' : colors.bg}">
+            style="background-color: ${todo.completed ? '' : (overdue ? '#ffcdd2' : colors.bg)}">
             <div class="todo-main-row">
                 <span class="drag-handle">&#8942;&#8942;</span>
                 <input type="checkbox" class="todo-checkbox" ${todo.completed ? 'checked' : ''}>
                 <span class="todo-text">${escapeHtml(todo.text)}</span>
                 ${hasNotes ? '<span class="notes-indicator" title="Has notes">📝</span>' : ''}
                 ${showSnooze ? '<button class="snooze-btn" title="Snooze 1 hour">😴</button>' : ''}
-                <button class="due-time-btn" title="Set due time">${dueTimeDisplay || '⏰'}</button>
-                <span class="priority-badge" style="background-color: ${colors.bg}; color: ${colors.text}">${formatPriority(todo.priority)}</span>
+                ${showDueTime ? `<button class="due-time-btn" title="Set due time">${dueTimeDisplay || '⏰'}</button>` : ''}
+                ${showPriority ? `<span class="priority-badge" style="background-color: ${colors.bg}; color: ${colors.text}">${formatPriority(todo.priority)}</span>` : ''}
                 <button class="delete-btn">&times;</button>
             </div>
             <div class="todo-inline-detail">
@@ -334,16 +340,33 @@ function renderTodoItem(doc) {
     `;
 }
 
+// Check if a todo matches the search query
+function matchesSearch(doc) {
+    if (!searchQuery) return true;
+    const data = doc.data();
+    const query = searchQuery.toLowerCase();
+    const text = (data.text || '').toLowerCase();
+    const notes = (data.notes || '').toLowerCase();
+    return text.includes(query) || notes.includes(query);
+}
+
 // Render todos to the DOM
 function renderTodos(docs) {
-    if (docs.length === 0) {
-        todoList.innerHTML = '<li class="empty-state">No todos yet. Add one above!</li>';
+    // Filter by search query
+    const filteredDocs = docs.filter(matchesSearch);
+
+    if (filteredDocs.length === 0) {
+        if (searchQuery) {
+            todoList.innerHTML = '<li class="empty-state">No matching tasks found.</li>';
+        } else {
+            todoList.innerHTML = '<li class="empty-state">No todos yet. Add one above!</li>';
+        }
         return;
     }
 
     // Separate completed and uncompleted
-    const uncompleted = docs.filter(d => !d.data().completed);
-    const completed = docs.filter(d => d.data().completed);
+    const uncompleted = filteredDocs.filter(d => !d.data().completed);
+    const completed = filteredDocs.filter(d => d.data().completed);
 
     // Group uncompleted by priority section
     const sections = {
@@ -872,6 +895,12 @@ addBtn.addEventListener('click', addTodo);
 
 todoInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') addTodo();
+});
+
+// Search functionality
+searchInput.addEventListener('input', (e) => {
+    searchQuery = e.target.value.trim();
+    renderTodos(currentDocs);
 });
 
 todoList.addEventListener('click', (e) => {
