@@ -2591,16 +2591,14 @@ h1 {
         gap: var(--space-2);
     }
 
-    /* Top bar adjustments */
-    .top-bar-toggle {
-        width: 100%;
-        justify-content: center;
+    /* Top bar settings gear - keep in corner on mobile */
+    .top-bar-wrapper {
+        top: var(--space-3);
+        right: var(--space-3);
     }
 
-    .top-bar-wrapper.expanded .top-bar {
-        flex-direction: column;
-        align-items: stretch;
-        gap: var(--space-3);
+    .top-bar {
+        min-width: 260px;
     }
 
     .user-controls {

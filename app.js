@@ -2408,6 +2408,43 @@ todoInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') addTodo();
 });
 
+// Add todo form toggle functionality
+function toggleAddTodoForm() {
+    if (addTodoContainer) {
+        addTodoContainer.classList.toggle('expanded');
+        // Focus the input when expanding
+        if (addTodoContainer.classList.contains('expanded')) {
+            todoInput.focus();
+        }
+    }
+}
+
+// Toggle button click handler
+if (addTodoToggle) {
+    addTodoToggle.addEventListener('click', toggleAddTodoForm);
+}
+
+// Keyboard shortcut: 'n' to open add form (when not in an input field)
+document.addEventListener('keydown', (e) => {
+    // Only trigger if not typing in an input/textarea and no modifier keys
+    const activeElement = document.activeElement;
+    const isInputFocused = activeElement.tagName === 'INPUT' ||
+                          activeElement.tagName === 'TEXTAREA' ||
+                          activeElement.isContentEditable;
+
+    if (e.key === 'n' && !isInputFocused && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        if (addTodoContainer && !addTodoContainer.classList.contains('expanded')) {
+            toggleAddTodoForm();
+        }
+    }
+
+    // Escape key to collapse the form
+    if (e.key === 'Escape' && addTodoContainer && addTodoContainer.classList.contains('expanded')) {
+        addTodoContainer.classList.remove('expanded');
+    }
+});
+
 // Sync datetime picker with text input
 dueTimeDatetime.addEventListener('change', () => {
     if (dueTimeDatetime.value) {
