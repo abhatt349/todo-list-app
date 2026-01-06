@@ -625,13 +625,86 @@ function handleOverdueItem(doc) {
     }
 }
 
-// Parse natural language date input
+// Get the current date/time components in the selected timezone
+function getNowInTimezone(timezone) {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: false
+    });
+    const parts = formatter.formatToParts(now);
+    const get = (type) => parseInt(parts.find(p => p.type === type)?.value || '0');
+    return {
+        year: get('year'),
+        month: get('month') - 1, // 0-indexed
+        day: get('day'),
+        hour: get('hour'),
+        minute: get('minute')
+    };
+}
+
+// Create a UTC timestamp from date/time components in the selected timezone
+function createDateInTimezone(year, month, day, hour, minute, timezone) {
+    // Create a date string and parse it in the target timezone
+    // Use a reference point to calculate the offset
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+
+    // Create formatter for the target timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
+        hour12: false
+    });
+
+    // Start with a rough UTC estimate
+    let utcDate = new Date(`${dateStr}Z`);
+
+    // Get what time that would be in the target timezone
+    const parts = formatter.formatToParts(utcDate);
+    const get = (type) => parseInt(parts.find(p => p.type === type)?.value || '0');
+    const tzHour = get('hour');
+    const tzDay = get('day');
+    const tzMonth = get('month') - 1;
+
+    // Calculate the difference and adjust
+    let hourDiff = hour - tzHour;
+    let dayDiff = day - tzDay;
+
+    // Handle day boundary crossings
+    if (dayDiff > 15) dayDiff -= 30; // Crossed month boundary backwards
+    if (dayDiff < -15) dayDiff += 30; // Crossed month boundary forwards
+
+    // Adjust UTC time
+    utcDate.setUTCHours(utcDate.getUTCHours() + hourDiff);
+    utcDate.setUTCDate(utcDate.getUTCDate() + dayDiff);
+
+    return utcDate;
+}
+
+// Parse natural language date input (uses selected timezone)
 function parseNaturalDate(input) {
     if (!input || !input.trim()) return null;
 
     const text = input.toLowerCase().trim();
-    const now = new Date();
-    let result = new Date(now);
+    const nowTz = getNowInTimezone(selectedTimezone);
+
+    // Track the date components we're building
+    let year = nowTz.year;
+    let month = nowTz.month;
+    let day = nowTz.day;
+    let hours = 9; // Default to 9am
+    let minutes = 0;
+    let timeSpecified = false;
 
     // Word to number mapping
     const wordToNum = {
@@ -648,64 +721,74 @@ function parseNaturalDate(input) {
         let amount = wordToNum[inMatch[1]] || parseInt(inMatch[1]);
         const unit = inMatch[2].toLowerCase();
 
+        // For relative times, start from current time in timezone
+        const result = createDateInTimezone(year, month, day, nowTz.hour, nowTz.minute, selectedTimezone);
+
         if (unit === 'minute') {
-            result.setMinutes(result.getMinutes() + amount);
+            result.setUTCMinutes(result.getUTCMinutes() + amount);
         } else if (unit === 'hour') {
-            result.setHours(result.getHours() + amount);
+            result.setUTCHours(result.getUTCHours() + amount);
         } else if (unit === 'day') {
-            result.setDate(result.getDate() + amount);
+            result.setUTCDate(result.getUTCDate() + amount);
         } else if (unit === 'week') {
-            result.setDate(result.getDate() + (amount * 7));
+            result.setUTCDate(result.getUTCDate() + (amount * 7));
         } else if (unit === 'month') {
-            result.setMonth(result.getMonth() + amount);
+            result.setUTCMonth(result.getUTCMonth() + amount);
         }
         return result.toISOString();
     }
 
-    // Default time to 9am if no time specified
-    let timeSpecified = false;
-    let hours = 9, minutes = 0;
-
-    // Extract time if present (e.g., "3pm", "3:30pm", "15:00")
-    const timeMatch = text.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+    // Extract time if present (e.g., "3pm", "3:30pm", "15:00", "at 7am")
+    const timeMatch = text.match(/(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
     if (timeMatch) {
-        timeSpecified = true;
-        hours = parseInt(timeMatch[1]);
-        minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
-        const meridiem = timeMatch[3];
-        if (meridiem) {
-            if (meridiem.toLowerCase() === 'pm' && hours !== 12) hours += 12;
-            if (meridiem.toLowerCase() === 'am' && hours === 12) hours = 0;
+        // Check if this looks like a time (has am/pm, or has a colon, or is in time context)
+        const hasAmPm = !!timeMatch[3];
+        const hasColon = !!timeMatch[2];
+        const hasAtPrefix = text.match(/at\s+\d/i);
+        const hourVal = parseInt(timeMatch[1]);
+
+        // Only treat as time if it has am/pm, colon, "at" prefix, or is a reasonable hour
+        if (hasAmPm || hasColon || hasAtPrefix || (hourVal >= 1 && hourVal <= 12)) {
+            timeSpecified = true;
+            hours = hourVal;
+            minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+            const meridiem = timeMatch[3];
+            if (meridiem) {
+                if (meridiem.toLowerCase() === 'pm' && hours !== 12) hours += 12;
+                if (meridiem.toLowerCase() === 'am' && hours === 12) hours = 0;
+            }
         }
     }
 
     // Parse relative dates
     if (text.includes('today')) {
-        // result is already today
+        // day is already today
     } else if (text.includes('tomorrow')) {
-        result.setDate(result.getDate() + 1);
+        day += 1;
     } else if (text.includes('yesterday')) {
-        result.setDate(result.getDate() - 1);
+        day -= 1;
     } else if (text.match(/next\s+week/)) {
-        result.setDate(result.getDate() + 7);
+        day += 7;
     } else if (text.match(/next\s+month/)) {
-        result.setMonth(result.getMonth() + 1);
+        month += 1;
     } else if (text.match(/beginning\s+of\s+next\s+month/)) {
-        result.setMonth(result.getMonth() + 1);
-        result.setDate(1);
+        month += 1;
+        day = 1;
     } else if (text.match(/end\s+of\s+(this\s+)?month/)) {
-        result.setMonth(result.getMonth() + 1);
-        result.setDate(0);
+        month += 1;
+        day = 0; // Last day of current month
     } else if (text.match(/next\s+(sun|mon|tue|wed|thu|fri|sat)/i)) {
         const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
         const dayMatch = text.match(/next\s+(sun|mon|tue|wed|thu|fri|sat)/i);
         const targetDay = days.findIndex(d => dayMatch[1].toLowerCase().startsWith(d));
-        const currentDay = result.getDay();
-        let daysUntil = targetDay - currentDay;
+        // Get current day of week in timezone
+        const currentDate = createDateInTimezone(year, month, day, 12, 0, selectedTimezone);
+        const currentDayOfWeek = currentDate.getDay();
+        let daysUntil = targetDay - currentDayOfWeek;
         if (daysUntil <= 0) daysUntil += 7;
-        result.setDate(result.getDate() + daysUntil);
+        day += daysUntil;
     } else {
-        // Try to parse month/day formats like "Jan 5", "January 5", "1/5"
+        // Try to parse month/day formats like "Jan 5", "January 5", "Feb 4 at 7am", "1/5"
         const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
         const monthMatch = text.match(/([a-z]+)\s+(\d{1,2})/i);
         const slashMatch = text.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
@@ -713,19 +796,26 @@ function parseNaturalDate(input) {
         if (monthMatch) {
             const monthIdx = monthNames.findIndex(m => monthMatch[1].toLowerCase().startsWith(m));
             if (monthIdx !== -1) {
-                result.setMonth(monthIdx);
-                result.setDate(parseInt(monthMatch[2]));
-                if (result < now) result.setFullYear(result.getFullYear() + 1);
+                month = monthIdx;
+                day = parseInt(monthMatch[2]);
+                // If date is in the past, assume next year
+                const testDate = createDateInTimezone(year, month, day, hours, minutes, selectedTimezone);
+                if (testDate < new Date()) {
+                    year += 1;
+                }
             }
         } else if (slashMatch) {
-            result.setMonth(parseInt(slashMatch[1]) - 1);
-            result.setDate(parseInt(slashMatch[2]));
+            month = parseInt(slashMatch[1]) - 1;
+            day = parseInt(slashMatch[2]);
             if (slashMatch[3]) {
-                let year = parseInt(slashMatch[3]);
+                year = parseInt(slashMatch[3]);
                 if (year < 100) year += 2000;
-                result.setFullYear(year);
-            } else if (result < now) {
-                result.setFullYear(result.getFullYear() + 1);
+            } else {
+                // If date is in the past, assume next year
+                const testDate = createDateInTimezone(year, month, day, hours, minutes, selectedTimezone);
+                if (testDate < new Date()) {
+                    year += 1;
+                }
             }
         } else if (!timeSpecified) {
             // Couldn't parse, try native Date parser as fallback
@@ -737,7 +827,8 @@ function parseNaturalDate(input) {
         }
     }
 
-    result.setHours(hours, minutes, 0, 0);
+    // Create the final date in the selected timezone
+    const result = createDateInTimezone(year, month, day, hours, minutes, selectedTimezone);
     return result.toISOString();
 }
 
