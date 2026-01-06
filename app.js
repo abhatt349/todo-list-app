@@ -791,9 +791,9 @@ function parseNaturalDate(input) {
         if (daysUntil <= 0) daysUntil += 7;
         day += daysUntil;
     } else {
-        // Try to parse month/day formats like "Jan 5", "January 5", "Feb 4 at 7am", "1/5"
+        // Try to parse month/day formats like "Jan 5", "January 5", "feb4", "Feb 4 at 7am", "1/5"
         const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-        const monthMatch = text.match(/([a-z]+)\s+(\d{1,2})/i);
+        const monthMatch = text.match(/([a-z]+)\s*(\d{1,2})/i);  // \s* makes space optional
         const slashMatch = text.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
 
         if (monthMatch) {
