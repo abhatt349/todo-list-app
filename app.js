@@ -708,6 +708,7 @@ function parseNaturalDate(input) {
     let hours = 9; // Default to 9am
     let minutes = 0;
     let timeSpecified = false;
+    let dateSpecified = false;
 
     // Word to number mapping
     const wordToNum = {
@@ -717,6 +718,15 @@ function parseNaturalDate(input) {
         'thirty': 30, 'forty': 40, 'forty-five': 45, 'sixty': 60,
         'a': 1, 'an': 1
     };
+
+    // Day name mappings (3-letter abbreviations)
+    const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
+    // Month name mappings
+    const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+    // Helper to get current time as Date for comparison
+    const nowDate = createDateInTimezone(nowTz.year, nowTz.month, nowTz.day, nowTz.hour, nowTz.minute, selectedTimezone);
 
     // Check for "in X minutes/hours/days/weeks/months" pattern
     const inMatch = text.match(/in\s+(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|forty-five|sixty)\s+(minute|hour|day|week|month)s?/i);
@@ -741,74 +751,170 @@ function parseNaturalDate(input) {
         return result.toISOString();
     }
 
-    // Extract time if present (e.g., "3pm", "3:30pm", "15:00", "at 7am")
-    // Must have explicit time marker: am/pm, colon, or "at" prefix
-    // Otherwise numbers like "4" in "feb 4" get incorrectly treated as times
-    const timeMatch = text.match(/(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
-    if (timeMatch) {
-        const hasAmPm = !!timeMatch[3];
-        const hasColon = !!timeMatch[2];
-        const hasAtPrefix = text.match(/at\s+\d/i);
-        const hourVal = parseInt(timeMatch[1]);
+    // Handle special time keywords
+    // Use word boundary check to avoid matching "afternoon" as "noon"
+    if (text.match(/\bnoon\b/)) {
+        hours = 12;
+        minutes = 0;
+        timeSpecified = true;
+    } else if (text.match(/\bmidnight\b/)) {
+        hours = 0;
+        minutes = 0;
+        timeSpecified = true;
+    } else if (text.match(/\btonight\b/) || text.match(/this\s+evening/)) {
+        hours = 20; // 8pm
+        minutes = 0;
+        timeSpecified = true;
+    } else if (text.match(/this\s+afternoon/)) {
+        hours = 14; // 2pm
+        minutes = 0;
+        timeSpecified = true;
+    } else if (text.match(/this\s+morning/)) {
+        hours = 9; // 9am
+        minutes = 0;
+        timeSpecified = true;
+    } else if (text.match(/\beod\b/) || text.match(/end\s+of\s+day/)) {
+        hours = 17; // 5pm
+        minutes = 0;
+        timeSpecified = true;
+    } else {
+        // Extract time if present (e.g., "3pm", "3:30pm", "15:00", "at 7am")
+        // Use more specific patterns to avoid matching day numbers in dates
 
-        // Only treat as time if it has an explicit time marker
-        if (hasAmPm || hasColon || hasAtPrefix) {
-            timeSpecified = true;
-            hours = hourVal;
-            minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
-            const meridiem = timeMatch[3];
-            if (meridiem) {
-                if (meridiem.toLowerCase() === 'pm' && hours !== 12) hours += 12;
-                if (meridiem.toLowerCase() === 'am' && hours === 12) hours = 0;
+        // Pattern 1: Time with am/pm (e.g., "3pm", "3:30pm", "3 pm", "3:30 pm")
+        const ampmMatch = text.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+
+        // Pattern 2: Time with colon (e.g., "15:00", "3:30")
+        const colonMatch = text.match(/(\d{1,2}):(\d{2})(?!\d)/);
+
+        // Pattern 3: Time with "at" prefix (e.g., "at 3", "at 3:30", "at 15")
+        const atMatch = text.match(/at\s+(\d{1,2})(?::(\d{2}))?(?:\s*(am|pm))?/i);
+
+        if (ampmMatch) {
+            const hourVal = parseInt(ampmMatch[1]);
+            const minVal = ampmMatch[2] ? parseInt(ampmMatch[2]) : 0;
+            // Validate hour (1-12 for am/pm) and minutes (0-59)
+            if (hourVal >= 1 && hourVal <= 12 && minVal >= 0 && minVal <= 59) {
+                timeSpecified = true;
+                hours = hourVal;
+                minutes = minVal;
+                const meridiem = ampmMatch[3].toLowerCase();
+                if (meridiem === 'pm' && hours !== 12) hours += 12;
+                if (meridiem === 'am' && hours === 12) hours = 0;
+            }
+        } else if (atMatch) {
+            const hourVal = parseInt(atMatch[1]);
+            const minVal = atMatch[2] ? parseInt(atMatch[2]) : 0;
+            // Validate hour (0-23) and minutes (0-59)
+            if (hourVal >= 0 && hourVal <= 23 && minVal >= 0 && minVal <= 59) {
+                timeSpecified = true;
+                hours = hourVal;
+                minutes = minVal;
+                if (atMatch[3]) {
+                    const meridiem = atMatch[3].toLowerCase();
+                    if (meridiem === 'pm' && hours !== 12) hours += 12;
+                    if (meridiem === 'am' && hours === 12) hours = 0;
+                } else if (hours <= 12 && hours !== 0) {
+                    // No am/pm specified with "at" - assume pm for 1-6, am for 7-12
+                    // This handles "at 3" -> 3pm, "at 9" -> 9am more naturally
+                    if (hours >= 1 && hours <= 6) {
+                        hours += 12;
+                    }
+                }
+            }
+        } else if (colonMatch) {
+            const hourVal = parseInt(colonMatch[1]);
+            const minVal = parseInt(colonMatch[2]);
+            // Validate hour (0-23) and minutes (0-59)
+            if (hourVal >= 0 && hourVal <= 23 && minVal >= 0 && minVal <= 59) {
+                timeSpecified = true;
+                hours = hourVal;
+                minutes = minVal;
+                // Military time - no adjustment needed
             }
         }
     }
 
     // Parse relative dates
     if (text.includes('today')) {
+        dateSpecified = true;
         // day is already today
     } else if (text.includes('tomorrow')) {
+        dateSpecified = true;
         day += 1;
     } else if (text.includes('yesterday')) {
+        dateSpecified = true;
         day -= 1;
     } else if (text.match(/next\s+week/)) {
+        dateSpecified = true;
         day += 7;
     } else if (text.match(/next\s+month/)) {
+        dateSpecified = true;
         month += 1;
+    } else if (text.match(/this\s+week/)) {
+        dateSpecified = true;
+        // Keep current day (this week = current week)
     } else if (text.match(/beginning\s+of\s+next\s+month/)) {
+        dateSpecified = true;
         month += 1;
         day = 1;
     } else if (text.match(/end\s+of\s+(this\s+)?month/)) {
+        dateSpecified = true;
         month += 1;
         day = 0; // Last day of current month
-    } else if (text.match(/next\s+(sun|mon|tue|wed|thu|fri|sat)/i)) {
-        const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    } else if (text.match(/next\s+(sun(day)?|mon(day)?|tue(s(day)?)?|wed(nesday)?|thu(r(s(day)?)?)?|fri(day)?|sat(urday)?)/i)) {
+        // "next monday", "next tues", "next saturday", etc.
+        // Supports variants: thur, thurs, thursday
+        dateSpecified = true;
         const dayMatch = text.match(/next\s+(sun|mon|tue|wed|thu|fri|sat)/i);
-        const targetDay = days.findIndex(d => dayMatch[1].toLowerCase().startsWith(d));
+        let targetDay = dayNames.findIndex(d => dayMatch[1].toLowerCase() === d);
         // Get current day of week in timezone
         const currentDate = createDateInTimezone(year, month, day, 12, 0, selectedTimezone);
         const currentDayOfWeek = currentDate.getDay();
         let daysUntil = targetDay - currentDayOfWeek;
         if (daysUntil <= 0) daysUntil += 7;
         day += daysUntil;
+    } else if (text.match(/^(sun(day)?|mon(day)?|tue(s(day)?)?|wed(nesday)?|thu(r(s(day)?)?)?|fri(day)?|sat(urday)?)(\s|$)/i)) {
+        // Day name without "next" prefix (e.g., "monday", "friday 3pm", "tues", "thurs")
+        // Supports: sun, sunday, mon, monday, tue, tues, tuesday, wed, wednesday,
+        //           thu, thur, thurs, thursday, fri, friday, sat, saturday
+        dateSpecified = true;
+        const dayMatch = text.match(/^(sun|mon|tue|wed|thu|fri|sat)/i);
+        let targetDay = dayNames.findIndex(d => dayMatch[1].toLowerCase() === d);
+        // Get current day of week in timezone
+        const currentDate = createDateInTimezone(year, month, day, 12, 0, selectedTimezone);
+        const currentDayOfWeek = currentDate.getDay();
+        let daysUntil = targetDay - currentDayOfWeek;
+        // If it's today or in the past, go to next week
+        if (daysUntil <= 0) daysUntil += 7;
+        day += daysUntil;
     } else {
         // Try to parse month/day formats like "Jan 5", "January 5", "feb4", "Feb 4 at 7am", "1/5"
-        const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-        const monthMatch = text.match(/([a-z]+)\s*(\d{1,2})/i);  // \s* makes space optional
+        // Use more specific regex to capture month names properly (not "next", "at", etc.)
+        // Also supports optional year: "Feb 4, 2025" or "Feb 4 2025"
+        const monthMatch = text.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december)\s*(\d{1,2})(?:(?:,?\s*|\s+)(\d{4}|\d{2}))?\b/i);
         const slashMatch = text.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
 
         if (monthMatch) {
+            dateSpecified = true;
             const monthIdx = monthNames.findIndex(m => monthMatch[1].toLowerCase().startsWith(m));
             if (monthIdx !== -1) {
                 month = monthIdx;
                 day = parseInt(monthMatch[2]);
-                // If date is in the past, assume next year
-                const testDate = createDateInTimezone(year, month, day, hours, minutes, selectedTimezone);
-                if (testDate < new Date()) {
-                    year += 1;
+                // Check if year was specified
+                if (monthMatch[3]) {
+                    year = parseInt(monthMatch[3]);
+                    if (year < 100) year += 2000;
+                } else {
+                    // If date is in the past, assume next year
+                    const testDate = createDateInTimezone(year, month, day, hours, minutes, selectedTimezone);
+                    if (testDate < nowDate) {
+                        year += 1;
+                    }
                 }
             }
         } else if (slashMatch) {
+            dateSpecified = true;
             month = parseInt(slashMatch[1]) - 1;
             day = parseInt(slashMatch[2]);
             if (slashMatch[3]) {
@@ -817,11 +923,11 @@ function parseNaturalDate(input) {
             } else {
                 // If date is in the past, assume next year
                 const testDate = createDateInTimezone(year, month, day, hours, minutes, selectedTimezone);
-                if (testDate < new Date()) {
+                if (testDate < nowDate) {
                     year += 1;
                 }
             }
-        } else if (!timeSpecified) {
+        } else if (!timeSpecified && !dateSpecified) {
             // Couldn't parse, try native Date parser as fallback
             const parsed = new Date(input);
             if (!isNaN(parsed.getTime())) {
