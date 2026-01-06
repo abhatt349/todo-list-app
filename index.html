@@ -62,11 +62,9 @@
     <div class="app-wrapper" id="app-wrapper" style="display: none;">
         <div class="container">
             <div class="top-bar-wrapper">
-                <div class="top-bar-toggle" id="top-bar-toggle">
+                <button class="top-bar-toggle" id="top-bar-toggle" title="Settings">
                     <span class="top-bar-toggle-icon">&#9881;</span>
-                    <span class="top-bar-toggle-text">Settings</span>
-                    <span class="top-bar-toggle-arrow">&#9662;</span>
-                </div>
+                </button>
                 <div class="top-bar" id="top-bar">
                     <div class="timezone-selector">
                         <label for="timezone-select">Timezone:</label>
@@ -89,8 +87,12 @@
 
             <h1>My Todos</h1>
 
-            <div class="add-todo">
-                <input type="text" id="todo-input" placeholder="What needs to be done?">
+            <div class="add-todo-container">
+                <button class="add-todo-toggle" id="add-todo-toggle" title="Add new todo (press 'n')">
+                    <span class="add-todo-toggle-icon">+</span>
+                </button>
+                <div class="add-todo" id="add-todo-form">
+                    <input type="text" id="todo-input" placeholder="What needs to be done?">
                 <input type="number" id="priority-select" min="0" max="10" step="0.1" value="5" placeholder="0-10">
                 <div class="due-input-wrapper">
                     <input type="text" id="due-time-input" placeholder="e.g. tomorrow 3pm">
@@ -267,6 +269,7 @@
                             </div>
                         </div>
                     </div>
+                </div>
                 </div>
             </div>
 

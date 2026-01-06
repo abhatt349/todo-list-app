@@ -26,6 +26,8 @@ const phoneError = document.getElementById('phone-error');
 const phoneSuccess = document.getElementById('phone-success');
 
 // App elements
+const addTodoContainer = document.getElementById('add-todo-form')?.parentElement;
+const addTodoToggle = document.getElementById('add-todo-toggle');
 const todoInput = document.getElementById('todo-input');
 const prioritySelect = document.getElementById('priority-select');
 const dueTimeInput = document.getElementById('due-time-input');
@@ -126,6 +128,7 @@ let selectedTodoId = null; // Currently selected todo for detail panel
 let searchQuery = ''; // Current search query
 let selectedFilterTags = []; // Tags selected for filtering
 let selectedTimezone = localStorage.getItem('timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone;
+let collapsedSections = JSON.parse(localStorage.getItem('collapsedSections') || '{}'); // Track collapsed sections
 
 // Recurrence types
 const RECURRENCE_TYPES = {
@@ -1263,18 +1266,42 @@ function renderTodos(docs) {
 
     let html = '';
 
+    // Helper function to render section header with toggle and count
+    function renderSectionHeader(sectionKey, cssClass, label, count, priority = null) {
+        const isCollapsed = collapsedSections[sectionKey] === true;
+        const collapsedClass = isCollapsed ? ' collapsed' : '';
+        const priorityAttr = priority !== null ? ` data-priority="${priority}"` : '';
+        return `<li class="section-header ${cssClass}${collapsedClass}" data-section="${sectionKey}"${priorityAttr}>
+            <span class="section-toggle">&#9660;</span>
+            <span class="section-label">${label}</span>
+            <span class="section-count">(${count})</span>
+        </li>`;
+    }
+
+    // Helper function to render items with section-hidden class if collapsed
+    function renderSectionItems(sectionKey, items) {
+        const isCollapsed = collapsedSections[sectionKey] === true;
+        if (isCollapsed) {
+            return items.map(doc => {
+                const itemHtml = renderTodoItem(doc);
+                return itemHtml.replace('class="todo-item', 'class="todo-item section-hidden');
+            }).join('');
+        }
+        return items.map(renderTodoItem).join('');
+    }
+
     // Always render all sections (so items can be dragged into them)
-    html += `<li class="section-header section-urgent" data-section="urgent" data-priority="10">Urgent (10)</li>`;
-    html += sections.urgent.map(renderTodoItem).join('');
+    html += renderSectionHeader('urgent', 'section-urgent', 'Urgent', sections.urgent.length, 10);
+    html += renderSectionItems('urgent', sections.urgent);
 
-    html += `<li class="section-header section-high" data-section="high" data-priority="8">High (7-9)</li>`;
-    html += sections.high.map(renderTodoItem).join('');
+    html += renderSectionHeader('high', 'section-high', 'High', sections.high.length, 8);
+    html += renderSectionItems('high', sections.high);
 
-    html += `<li class="section-header section-medium" data-section="medium" data-priority="5">Medium (4-6)</li>`;
-    html += sections.medium.map(renderTodoItem).join('');
+    html += renderSectionHeader('medium', 'section-medium', 'Medium', sections.medium.length, 5);
+    html += renderSectionItems('medium', sections.medium);
 
-    html += `<li class="section-header section-low" data-section="low" data-priority="2">Low (1-3)</li>`;
-    html += sections.low.map(renderTodoItem).join('');
+    html += renderSectionHeader('low', 'section-low', 'Low', sections.low.length, 2);
+    html += renderSectionItems('low', sections.low);
 
     // Render completed section only if there are completed items
     // Sort by completedAt (most recently completed first)
@@ -1284,12 +1311,46 @@ function renderTodos(docs) {
             const bTime = b.data().completedAt || 0;
             return bTime - aTime; // Descending (most recent first)
         });
-        html += `<li class="section-header section-completed">Completed</li>`;
-        html += sortedCompleted.map(renderTodoItem).join('');
+        html += renderSectionHeader('completed', 'section-completed', 'Completed', sortedCompleted.length);
+        html += renderSectionItems('completed', sortedCompleted);
     }
 
     todoList.innerHTML = html;
     setupDragAndDrop();
+    setupSectionCollapse();
+}
+
+// Setup section collapse click handlers
+function setupSectionCollapse() {
+    const sectionHeaders = todoList.querySelectorAll('.section-header');
+    sectionHeaders.forEach(header => {
+        header.addEventListener('click', (e) => {
+            // Don't toggle if dragging
+            if (e.target.closest('.todo-item')) return;
+
+            const sectionKey = header.dataset.section;
+            if (!sectionKey) return;
+
+            // Toggle collapsed state
+            const isNowCollapsed = !collapsedSections[sectionKey];
+            collapsedSections[sectionKey] = isNowCollapsed;
+
+            // Save to localStorage
+            localStorage.setItem('collapsedSections', JSON.stringify(collapsedSections));
+
+            // Toggle CSS class on header
+            header.classList.toggle('collapsed', isNowCollapsed);
+
+            // Find all todo items that belong to this section and toggle their visibility
+            let sibling = header.nextElementSibling;
+            while (sibling && !sibling.classList.contains('section-header')) {
+                if (sibling.classList.contains('todo-item')) {
+                    sibling.classList.toggle('section-hidden', isNowCollapsed);
+                }
+                sibling = sibling.nextElementSibling;
+            }
+        });
+    });
 }
 
 // Escape HTML to prevent XSS
@@ -1624,7 +1685,10 @@ async function addTodo() {
     // Reset recurrence form
     resetRecurrenceForm('add');
     addAdvancedOptions.classList.remove('expanded');
-    todoInput.focus();
+    // Collapse the add todo form after adding
+    if (addTodoContainer) {
+        addTodoContainer.classList.remove('expanded');
+    }
 }
 
 // Toggle todo completion
@@ -2229,12 +2293,88 @@ async function importBackup(file) {
             throw new Error('Invalid backup file format');
         }
 
-        const confirmMsg = `This will import ${backup.todos.length} todos as new items. Continue?`;
-        if (!confirm(confirmMsg)) return;
+        // Get existing todos to check for duplicates
+        const existingTodos = new Map();
+        currentDocs.forEach(doc => {
+            existingTodos.set(doc.id, doc.data());
+        });
+        deletedDocs.forEach(doc => {
+            existingTodos.set(doc.id, doc.data());
+        });
+
+        // Separate new todos from potential duplicates
+        const newTodos = [];
+        const duplicates = [];
+
+        for (const todo of backup.todos) {
+            if (todo.id && existingTodos.has(todo.id)) {
+                duplicates.push({ imported: todo, existing: existingTodos.get(todo.id), id: todo.id });
+            } else {
+                newTodos.push(todo);
+            }
+        }
+
+        // Handle duplicates first
+        let duplicateAction = null; // 'keep_existing', 'use_imported', or 'ask_each'
+        let duplicatesProcessed = 0;
+
+        if (duplicates.length > 0) {
+            const dupeMsg = `Found ${duplicates.length} task(s) that already exist.\n\nHow would you like to handle duplicates?\n\n` +
+                `• Click OK to keep existing versions\n` +
+                `• Click Cancel to use imported versions`;
+
+            if (duplicates.length === 1) {
+                // For single duplicate, show details
+                const dup = duplicates[0];
+                const detailMsg = `This task already exists:\n\n` +
+                    `Existing: "${dup.existing.text?.substring(0, 50) || 'No text'}..."\n` +
+                    `Imported: "${dup.imported.text?.substring(0, 50) || 'No text'}..."\n\n` +
+                    `Click OK to keep existing, Cancel to replace with imported.`;
+
+                if (confirm(detailMsg)) {
+                    duplicateAction = 'keep_existing';
+                } else {
+                    duplicateAction = 'use_imported';
+                }
+            } else {
+                if (confirm(dupeMsg)) {
+                    duplicateAction = 'keep_existing';
+                } else {
+                    duplicateAction = 'use_imported';
+                }
+            }
+
+            // Process duplicates based on user choice
+            if (duplicateAction === 'use_imported') {
+                for (const dup of duplicates) {
+                    const { id, userId, createdAt, ...data } = dup.imported;
+                    await todosRef.doc(dup.id).update({
+                        ...data,
+                        userId: currentUser.id
+                    });
+                    duplicatesProcessed++;
+                }
+            }
+        }
+
+        // Now handle new todos
+        if (newTodos.length === 0 && duplicates.length > 0) {
+            const actionTaken = duplicateAction === 'use_imported'
+                ? `Updated ${duplicatesProcessed} existing todos with imported versions.`
+                : `Kept ${duplicates.length} existing todos unchanged.`;
+            alert(actionTaken);
+            return;
+        }
+
+        const confirmMsg = newTodos.length > 0
+            ? `Import ${newTodos.length} new todo(s)?` +
+              (duplicatesProcessed > 0 ? ` (${duplicatesProcessed} duplicates already updated)` : '')
+            : 'No new todos to import.';
+
+        if (newTodos.length > 0 && !confirm(confirmMsg)) return;
 
         let imported = 0;
-        for (const todo of backup.todos) {
-            // Always create new documents with new IDs to avoid conflicts
+        for (const todo of newTodos) {
             // eslint-disable-next-line no-unused-vars
             const { id, userId, createdAt, ...data } = todo;
 
@@ -2247,7 +2387,14 @@ async function importBackup(file) {
             imported++;
         }
 
-        alert(`Successfully imported ${imported} todos.`);
+        let resultMsg = '';
+        if (imported > 0) resultMsg += `Imported ${imported} new todo(s). `;
+        if (duplicatesProcessed > 0) resultMsg += `Updated ${duplicatesProcessed} existing todo(s). `;
+        if (duplicates.length > 0 && duplicateAction === 'keep_existing') {
+            resultMsg += `Skipped ${duplicates.length} duplicate(s).`;
+        }
+
+        alert(resultMsg || 'No changes made.');
     } catch (error) {
         console.error('Import failed:', error);
         alert('Failed to import backup. Please check the file format and try again.');
