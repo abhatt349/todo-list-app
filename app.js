@@ -742,16 +742,17 @@ function parseNaturalDate(input) {
     }
 
     // Extract time if present (e.g., "3pm", "3:30pm", "15:00", "at 7am")
+    // Must have explicit time marker: am/pm, colon, or "at" prefix
+    // Otherwise numbers like "4" in "feb 4" get incorrectly treated as times
     const timeMatch = text.match(/(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
     if (timeMatch) {
-        // Check if this looks like a time (has am/pm, or has a colon, or is in time context)
         const hasAmPm = !!timeMatch[3];
         const hasColon = !!timeMatch[2];
         const hasAtPrefix = text.match(/at\s+\d/i);
         const hourVal = parseInt(timeMatch[1]);
 
-        // Only treat as time if it has am/pm, colon, "at" prefix, or is a reasonable hour
-        if (hasAmPm || hasColon || hasAtPrefix || (hourVal >= 1 && hourVal <= 12)) {
+        // Only treat as time if it has an explicit time marker
+        if (hasAmPm || hasColon || hasAtPrefix) {
             timeSpecified = true;
             hours = hourVal;
             minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
